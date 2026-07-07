@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.cubr.fargo_bosses.fargo_bosses.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "refmap": "fargo_bosses.refmap.json",
+  "mixins": [
+  ],
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
