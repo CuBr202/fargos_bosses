@@ -41,6 +41,7 @@ import javax.annotation.Nullable;
 public class MutantEntity extends BossEntity {
     public static final int HP = 200;
 
+
     public int stage;
 
     public MutantEntity(EntityType<? extends MutantEntity> type, Level level) {
@@ -79,6 +80,7 @@ public class MutantEntity extends BossEntity {
                 .add(Attributes.MAX_HEALTH, HP)
                 .add(Attributes.FOLLOW_RANGE, 64);
     }
+
 
     public static void spawn(Player player, Level world) {
         RandomSource rand = player.getRandom();

@@ -2,6 +2,7 @@ package com.cubr.fargo_bosses.fargo_bosses.registry;
 
 import com.cubr.fargo_bosses.fargo_bosses.FargoBosses;
 import com.cubr.fargo_bosses.fargo_bosses.entity.AbominationEntity;
+import com.cubr.fargo_bosses.fargo_bosses.entity.FreeFortunaBombEntity;
 import com.cubr.fargo_bosses.fargo_bosses.entity.MutantEntity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -29,6 +30,14 @@ public class ModEntities {
                     .sized(0.6F, 1.95F)
                     .setUpdateInterval(1)
                     .setTrackingRange(128)
+                    .setShouldReceiveVelocityUpdates(true)
+                    .build(""));
+
+    public static final RegistryObject<EntityType<FreeFortunaBombEntity>> FREE_FORTUNA_BOMB = REGISTER.register("free_fortuna_bomb",
+            () -> EntityType.Builder.<FreeFortunaBombEntity>of(FreeFortunaBombEntity::new, MobCategory.MISC)
+                    .sized(0.3125F, 0.3125F)
+                    .setUpdateInterval(1)
+                    .setTrackingRange(64)
                     .setShouldReceiveVelocityUpdates(true)
                     .build(""));
 
