@@ -3,19 +3,20 @@ package com.cubr.fargo_bosses.fargo_bosses.entity;
 import com.cubr.fargo_bosses.fargo_bosses.FargoBosses;
 import com.cubr.fargo_bosses.fargo_bosses.registry.ModEntities;
 import lykrast.meetyourfight.entity.BossEntity;
-import lykrast.meetyourfight.entity.FortunaBombEntity;
+import lykrast.meetyourfight.entity.ProjectileLineEntity;
+import lykrast.meetyourfight.entity.ProjectileTargetedEntity;
 import lykrast.meetyourfight.entity.ai.MoveFrontOfTarget;
 import lykrast.meetyourfight.entity.ai.StationaryAttack;
 import lykrast.meetyourfight.entity.ai.VexMoveRandomGoal;
 import lykrast.meetyourfight.entity.movement.VexMovementController;
 import lykrast.meetyourfight.registry.MYFSounds;
+import net.miauczel.legendary_monsters.entity.AnimatedMonster.Projectile.ThrownPhantomDaggerEntity;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.DifficultyInstance;
@@ -24,6 +25,7 @@ import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
+import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
@@ -36,20 +38,43 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.ForgeEventFactory;
 
 import javax.annotation.Nullable;
+import java.util.EnumSet;
 
 public class AbominationEntity extends BossEntity {
-    public static final int HP = 200;
+    public static final int HP = 200, DMG = 10;
 
     public static final int PHASE_1 = 0, PHASE_1_TRANSITION = 1, PHASE_2 = 2, PHASE_2_TRANSITION = 3, PHASE_3 = 4, DEATH_PHASE = 5;
     private static final float PHASE_1_THRESHOLD = 2.0F / 3.0F;
     private static final int TRANSITION_TIME = 2 * 20;
     private static final int PHASE_3_TIME = 20 * 20;
 
-    public  static final int ATK_DICE = 0;
+    public static final int ATK_DICE = 0, ATK_CHIPS_CIRCLE = 1, ATK_DASH = 2, ATK_DAGGER = 3;
 
     // Settings
     private static final int DICE_ATTACK_DELAY = 15;
     private static final int DICE_ATTACK_AFTER_COOLDOWN = 20;
+
+    private static final int CHIPS_ATTACK_DELAY = 20;
+
+    private static final int CHIPS_CIRCLE_DELAY = 10;
+    private static final int CHIPS_ATTACK_AFTER_COOLDOWN = 20;
+
+    private static final int DAGGER_WAVES = 4;
+    private static final int DAGGERS_PER_WAVE = 12;
+    private static final int DAGGER_ALIGN_TIME = 10;
+    private static final int DAGGER_WAVE_INTERVAL = 20;
+    private static final int DAGGER_REST_TIME = 160;
+    private static final int DAGGER_DRIFT_INTERVAL = 15;
+    private static final float DAGGER_DAMAGE = 6.0F;
+    private static final float DAGGER_SPEED = 0.4F;
+    private static final int DAGGER_RETURN_TICK = 80;
+
+    private static final int DASH_ATTACK_AFTER_COOLDOWN = 20;
+    private static final int DASH_ATTACK_COUNT = 5;
+    private static final int DASH_WINDUP = 5;
+    private static final int DASH_TIME = 10;
+    private static final int DASH_RECOVER = 5;
+    private static final double DASH_SPEED = 2;
 
 
     private int phase, phaseTimer, attackCooldown, nextAttack;
@@ -77,7 +102,10 @@ public class AbominationEntity extends BossEntity {
     @Override
     protected void registerGoals() {
         goalSelector.addGoal(0, new FloatGoal(this));
-        goalSelector.addGoal(1,new DiceAttack(this));
+        goalSelector.addGoal(1, new DiceAttack(this));
+        goalSelector.addGoal(2, new ChipsAttack(this));
+        goalSelector.addGoal(3, new PhantomDaggerAttack(this));
+        goalSelector.addGoal(4, new DashAttack(this));
         goalSelector.addGoal(7, new MoveFrontOfTarget(this, 1));
         goalSelector.addGoal(8, new VexMoveRandomGoal(this, 0.25));
         goalSelector.addGoal(9, new LookAtPlayerGoal(this, Player.class, 3.0F, 1.0F));
@@ -89,7 +117,8 @@ public class AbominationEntity extends BossEntity {
     public static AttributeSupplier.Builder createAttributes() {
         return Mob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH, HP)
-                .add(Attributes.FOLLOW_RANGE, 64);
+                .add(Attributes.FOLLOW_RANGE, 64)
+                .add(Attributes.ATTACK_DAMAGE, DMG);
     }
 
     public static void spawn(Player player, Level world) {
@@ -172,16 +201,33 @@ public class AbominationEntity extends BossEntity {
     }
 
     private void rollNextAttack(int ignore) {
-        /*
-        int max = ATK_CHIPS_CIRCLE;
-        if (phase == PHASE_2 || phase == PHASE_3) max = ATK_CHIPS_STRAFE;
-        if (ignore >= 0) {
-            nextAttack = random.nextInt(max);
-            if (nextAttack >= ignore) nextAttack++;
+        if (ignore == ATK_DICE && phase == PHASE_1) {
+            nextAttack = ATK_CHIPS_CIRCLE;
         }
-        else nextAttack = random.nextInt(max+1);
-         */
-        nextAttack = ATK_DICE;
+        else if (ignore == ATK_DICE && phase == PHASE_2) {
+            nextAttack = ATK_DAGGER;
+        }
+        else if (ignore == ATK_CHIPS_CIRCLE || ignore == ATK_DAGGER || ignore == ATK_DICE) {
+            nextAttack = ATK_DASH;
+        }
+        else {
+            nextAttack = ATK_DICE;
+        }
+    }
+
+    private ProjectileTargetedEntity readyTargeted() {
+        ProjectileTargetedEntity proj = new ProjectileTargetedEntity(level(), this);
+        proj.setOwner(this);
+        proj.setPos(getX(), getEyeY() + 1, getZ());
+        return proj;
+    }
+
+    private ProjectileLineEntity readyLineProjectile() {
+        ProjectileLineEntity ghost = new ProjectileLineEntity(level(), this);
+        ghost.setOwner(this);
+        ghost.setPos(getX(), getY() + 0.75, getZ());
+        ghost.setVariant(ProjectileLineEntity.VAR_BELLRINGER);
+        return ghost;
     }
 
     @Override
@@ -349,5 +395,399 @@ public class AbominationEntity extends BossEntity {
             //if (abom.isAttackPhase()) abom.setAnimation(ANIM_IDLE);
         }
 
+    }
+
+    private static class ChipsAttack extends StationaryAttack {
+        private final AbominationEntity abom;
+        private LivingEntity target;
+        private int attackRemaining, attackDelay, circleDelay, circleDirection, clapTime;
+
+        public ChipsAttack(AbominationEntity abom) {
+            super(abom);
+            this.abom = abom;
+        }
+
+        @Override
+        public boolean canUse() {
+            return abom.nextAttack == ATK_CHIPS_CIRCLE && abom.phase == PHASE_1 && abom.attackCooldown <= 0 && abom.getTarget() != null && abom.getTarget().isAlive();
+        }
+
+        @Override
+        public boolean canContinueToUse() {
+            return abom.nextAttack == ATK_CHIPS_CIRCLE && (attackDelay > 0 || attackRemaining > 0) && target != null && target.isAlive() && abom.phase == PHASE_1;
+        }
+
+        @Override
+        public void start() {
+            super.start();
+            target = abom.getTarget();
+            //abom.setAnimation(ANIM_CHIPS_WINDUP);
+            attackDelay = CHIPS_ATTACK_DELAY;
+            attackRemaining = 3;
+            circleDelay = CHIPS_CIRCLE_DELAY;
+            circleDirection = abom.random.nextBoolean() ? 1 : -1;
+            clapTime = 12;
+            abom.playSound(MYFSounds.dameFortunaAttack.get(), abom.getSoundVolume(), abom.getVoicePitch());
+        }
+
+        @Override
+        public void tick() {
+            super.tick();
+            attackDelay--;
+            if (attackRemaining > 0) {
+                if (attackDelay <= 0) {
+                    attackRemaining--;
+                    //abom.setAnimation(ANIM_CHIPS_LAUNCH);
+                    performAttack();
+                }
+                else if (attackDelay == 15) {
+                    //abom.setAnimation(ANIM_CHIPS_WINDUP);
+                }
+            }
+            else {
+                if (attackDelay == clapTime) {
+                    //abom.setAnimation(ANIM_CLAP);
+                }
+                else if (attackDelay == clapTime - 2) {
+                    abom.playSound(MYFSounds.dameFortunaClap.get(), 2.0F, (abom.random.nextFloat() - abom.random.nextFloat()) * 0.1F + 1.0F);
+                }
+            }
+        }
+
+        private void performAttack() {
+            attackDelay = attackRemaining > 0 ? CHIPS_ATTACK_DELAY : CHIPS_ATTACK_DELAY + 10;
+            fireChipsCircle(8, 1, circleDelay + 5 * attackRemaining);
+            if (attackRemaining > 0) {
+                rotateAroundTarget();
+            }
+        }
+
+        private void rotateAroundTarget() {
+            float angle = (abom.random.nextInt(4) + 4) * 10.0F * Mth.DEG_TO_RAD * circleDirection;
+            Vec3 offset = new Vec3(abom.getX() - target.getX(), 0, abom.getZ() - target.getZ()).normalize().yRot(angle);
+            double distance = abom.random.nextDouble() * 2 + 4;
+
+            abom.getMoveControl().setWantedPosition(
+                    target.getX() + offset.x * distance,
+                    target.getY() + 1 + abom.random.nextDouble() * 2,
+                    target.getZ() + offset.z * distance,
+                    3);
+        }
+
+        private void fireChipsCircle(int chips, int circles, int delay) {
+            Vec3 perp = abom.getLookAngle().cross(new Vec3(0, 1, 0)).normalize();
+            double sy = abom.getY() + 1;
+            float angle = Mth.TWO_PI / chips;
+
+            double abomX = abom.getX();
+            double abomZ = abom.getZ();
+            double sx = abomX;
+            double sz = abomZ;
+
+            for (int c = 0; c < circles; c++) {
+                Vec3 offset = perp;
+                for (int i = 0; i < chips; i++) {
+                    ProjectileTargetedEntity proj = abom.readyTargeted();
+                    proj.setPos(sx, sy + (c * chips + i) * 0.125, sz);
+                    proj.setUp(delay + delay * c, delay, target, 1.5, abomX + 2 * offset.x, sy + 1 + c, abomZ + 2 * offset.z);
+                    abom.level().addFreshEntity(proj);
+                    offset = offset.yRot(angle);
+                }
+            }
+
+            abom.playSound(MYFSounds.dameFortunaChipsStart.get(), 2.0F, (abom.random.nextFloat() - abom.random.nextFloat()) * 0.2F + 1.0F);
+        }
+
+        @Override
+        public void stop() {
+            abom.setCooldownNextAttack(CHIPS_ATTACK_AFTER_COOLDOWN);
+            abom.rollNextAttack(ATK_CHIPS_CIRCLE);
+            //if (abom.isAttackPhase()) abom.setAnimation(ANIM_IDLE);
+        }
+    }
+
+    private static class PhantomDaggerAttack extends StationaryAttack {
+        private final AbominationEntity abom;
+        private LivingEntity target;
+        private int wavesRemaining, attackDelay, restTime, alignTime, driftTime, driftDirection;
+        private boolean aligning;
+
+        public PhantomDaggerAttack(AbominationEntity abom) {
+            super(abom);
+            this.abom = abom;
+        }
+
+        @Override
+        public boolean canUse() {
+            return abom.nextAttack == ATK_DAGGER && abom.phase == PHASE_2 && abom.attackCooldown <= 0 && abom.getTarget() != null && abom.getTarget().isAlive();
+        }
+
+        @Override
+        public boolean canContinueToUse() {
+            return abom.nextAttack == ATK_DAGGER && target != null && target.isAlive() && abom.phase == PHASE_2 && (wavesRemaining > 0 || attackDelay > 0 || restTime > 0);
+        }
+
+        @Override
+        public void start() {
+            super.start();
+            target = abom.getTarget();
+            wavesRemaining = DAGGER_WAVES;
+            attackDelay = 0;
+            restTime = 0;
+            alignTime = DAGGER_ALIGN_TIME;
+            driftTime = 0;
+            driftDirection = abom.random.nextBoolean() ? 1 : -1;
+            aligning = true;
+            stationaryY = target.getY();
+            //abom.setAnimation(ANIM_DAGGER_WINDUP);
+            abom.playSound(MYFSounds.dameFortunaAttack.get(), abom.getSoundVolume(), abom.getVoicePitch());
+        }
+
+        @Override
+        public void tick() {
+            super.tick();
+            if (aligning) {
+                alignTime--;
+                stationaryY = target.getY();
+                abom.getMoveControl().setWantedPosition(abom.getX(), stationaryY, abom.getZ(), 1.5);
+                if (Math.abs(abom.getY() - stationaryY) <= 0.25 || alignTime <= 0) {
+                    aligning = false;
+                    abom.setDeltaMovement(Vec3.ZERO);
+                }
+                return;
+            }
+
+            driftAroundTarget();
+
+            if (restTime > 0) {
+                restTime--;
+                return;
+            }
+
+            if (attackDelay > 0) {
+                attackDelay--;
+                return;
+            }
+
+            if (wavesRemaining > 0) {
+                wavesRemaining--;
+                //abom.setAnimation(ANIM_DAGGER_THROW);
+                throwDaggerWave();
+                if (wavesRemaining > 0) {
+                    attackDelay = DAGGER_WAVE_INTERVAL - 1;
+                }
+                else {
+                    restTime = DAGGER_REST_TIME;
+                    //abom.setAnimation(ANIM_DAGGER_REST);
+                }
+            }
+        }
+
+        private void throwDaggerWave() {
+            double sx = abom.getX();
+            double sy = abom.getY() + abom.getBbHeight() * 0.5;
+            double sz = abom.getZ();
+            double randomOffset = abom.random.nextDouble();
+
+            for (int i = 0; i < DAGGERS_PER_WAVE; i++) {
+                double angle = (i / (double) DAGGERS_PER_WAVE + randomOffset) * Mth.TWO_PI;
+                double dx = Math.cos(angle);
+                double dz = Math.sin(angle);
+
+                ThrownPhantomDaggerEntity dagger = new ThrownPhantomDaggerEntity(net.miauczel.legendary_monsters.entity.ModEntities.THROWN_PHANTOM_DAGGER.get(), abom.level());
+                dagger.setOwner(abom);
+                dagger.setReturnEntity(abom);
+                dagger.setReturnTick(DAGGER_RETURN_TICK);
+                dagger.setDamage(DAGGER_DAMAGE);
+                dagger.setRed(true);
+                dagger.setPos(sx, sy, sz);
+                dagger.setYRot((float) Math.toDegrees(Math.atan2(dz, dx)) - 90.0F);
+                dagger.shoot(dx, 0, dz, DAGGER_SPEED, 0.0F);
+                abom.level().addFreshEntity(dagger);
+            }
+
+            abom.playSound(MYFSounds.dameFortunaShoot.get(), 2.0F, (abom.random.nextFloat() - abom.random.nextFloat()) * 0.2F + 1.0F);
+        }
+
+        private void driftAroundTarget() {
+            driftTime--;
+            stationaryY = target.getY();
+            if (driftTime > 0 && abom.getMoveControl().hasWanted()) {
+                return;
+            }
+
+            driftTime = DAGGER_DRIFT_INTERVAL;
+            float angle = (abom.random.nextInt(4) + 2) * 10.0F * Mth.DEG_TO_RAD * driftDirection;
+            Vec3 offset = new Vec3(abom.getX() - target.getX(), 0, abom.getZ() - target.getZ());
+            if (offset.lengthSqr() < 1.0E-4) {
+                offset = new Vec3(1, 0, 0);
+            }
+
+            offset = offset.normalize().yRot(angle);
+            double distance = abom.random.nextDouble() * 2 + 3;
+            abom.getMoveControl().setWantedPosition(
+                    target.getX() + offset.x * distance,
+                    stationaryY,
+                    target.getZ() + offset.z * distance,
+                    1.0);
+        }
+
+        @Override
+        public void stop() {
+            abom.setCooldownNextAttack(0);
+            abom.rollNextAttack(ATK_DAGGER);
+            //if (abom.isAttackPhase()) abom.setAnimation(ANIM_IDLE);
+        }
+    }
+
+    private static class DashAttack extends Goal {
+        private final AbominationEntity abom;
+        private LivingEntity target;
+        private Vec3 dashDirection;
+        private int dashesRemaining, timer, attackPhase;
+
+        private static final int PHASE_WINDUP = 0;
+        private static final int PHASE_DASH = 1;
+        private static final int PHASE_RECOVER = 2;
+        private static final int PHASE_DONE = 3;
+
+        public DashAttack(AbominationEntity abom) {
+            this.abom = abom;
+            setFlags(EnumSet.of(Goal.Flag.MOVE, Goal.Flag.LOOK));
+        }
+
+        @Override
+        public boolean requiresUpdateEveryTick() {
+            return true;
+        }
+
+        @Override
+        public boolean canUse() {
+            return abom.nextAttack == ATK_DASH && abom.isAttackPhase() && abom.attackCooldown <= 0 && abom.getTarget() != null && abom.getTarget().isAlive();
+        }
+
+        @Override
+        public boolean canContinueToUse() {
+            return abom.nextAttack == ATK_DASH && target != null && target.isAlive() && attackPhase != PHASE_DONE && abom.isAttackPhase();
+        }
+
+        @Override
+        public void start() {
+            target = abom.getTarget();
+            dashesRemaining = DASH_ATTACK_COUNT;
+            dashDirection = Vec3.ZERO;
+            beginWindup();
+            abom.playSound(MYFSounds.rosalyneSwingPrepare.get(), abom.getSoundVolume(), abom.getVoicePitch());
+        }
+
+        private void beginWindup() {
+            attackPhase = PHASE_WINDUP;
+            timer = DASH_WINDUP;
+            if(abom.phase == PHASE_2){
+                timer = DASH_WINDUP*2;
+            }
+            abom.setDeltaMovement(Vec3.ZERO);
+            //abom.setAnimation(ANIM_DASH_WINDUP);
+        }
+
+        @Override
+        public void tick() {
+            if (target == null) {
+                attackPhase = PHASE_DONE;
+                return;
+            }
+
+            timer--;
+            abom.getLookControl().setLookAt(target, 30.0F, 30.0F);
+
+            if (attackPhase == PHASE_WINDUP) {
+                abom.getMoveControl().setWantedPosition(abom.getX(), abom.getY(), abom.getZ(), 1);
+                if (timer <= 0) {
+                    beginDash();
+                }
+            }
+            else if (attackPhase == PHASE_DASH) {
+                abom.setDeltaMovement(dashDirection.scale(DASH_SPEED));
+                hurtDashContacts();
+                if (timer % 2 == 0) {
+                    leaveDashTrail();
+                }
+                if (timer <= 0) {
+                    beginRecover();
+                }
+            }
+            else if (attackPhase == PHASE_RECOVER) {
+                abom.setDeltaMovement(abom.getDeltaMovement().scale(0.6));
+                if (timer <= 0) {
+                    if (dashesRemaining > 0) {
+                        beginWindup();
+                    }
+                    else {
+                        attackPhase = PHASE_DONE;
+                    }
+                }
+            }
+        }
+
+        private void beginDash() {
+            Vec3 from = new Vec3(abom.getX(), abom.getY() + 0.75, abom.getZ());
+            Vec3 to = new Vec3(target.getX(), target.getY() + target.getBbHeight() * 0.5, target.getZ());
+            dashDirection = to.subtract(from).normalize();
+            if (dashDirection.lengthSqr() < 1.0E-4) {
+                dashDirection = abom.getLookAngle().normalize();
+            }
+
+            dashesRemaining--;
+            attackPhase = PHASE_DASH;
+            timer = DASH_TIME;
+            //abom.setAnimation(ANIM_DASH);
+            leaveDashTrail();
+            abom.playSound(MYFSounds.rosalyneSwing.get(), 1.0F, 1.0F);
+        }
+
+        private void beginRecover() {
+            attackPhase = PHASE_RECOVER;
+            timer = DASH_RECOVER;
+            if(abom.phase == PHASE_2){
+                timer = DASH_RECOVER*2;
+            }
+            abom.setDeltaMovement(Vec3.ZERO);
+            //abom.setAnimation(ANIM_DASH_RECOVER);
+        }
+
+        private void hurtDashContacts() {
+            for (LivingEntity entity : abom.level().getEntitiesOfClass(LivingEntity.class, abom.getBoundingBox().inflate(0.4D), entity -> entity != abom && entity.isAlive() && !(entity instanceof AbominationEntity))) {
+                abom.doHurtTarget(entity);
+            }
+        }
+
+        private void leaveDashTrail() {
+            ProjectileLineEntity ghost = abom.readyLineProjectile();
+            ghost.setUp(1, dashDirection.x, dashDirection.y, dashDirection.z, abom.getX(), abom.getY() + 0.75, abom.getZ());
+            abom.level().addFreshEntity(ghost);
+
+            if (abom.phase == PHASE_2) {
+                Vec3 perpendicular = new Vec3(-dashDirection.z, 0, dashDirection.x).normalize();
+                if (perpendicular.lengthSqr() < 1.0E-4) {
+                    perpendicular = new Vec3(1, 0, 0);
+                }
+
+                ProjectileLineEntity left = abom.readyLineProjectile();
+                left.setUp(1, perpendicular.x, perpendicular.y, perpendicular.z, abom.getX(), abom.getY() + 0.75, abom.getZ());
+                abom.level().addFreshEntity(left);
+
+                ProjectileLineEntity right = abom.readyLineProjectile();
+                right.setUp(1, -perpendicular.x, -perpendicular.y, -perpendicular.z, abom.getX(), abom.getY() + 0.75, abom.getZ());
+                abom.level().addFreshEntity(right);
+            }
+        }
+
+        @Override
+        public void stop() {
+            abom.setDeltaMovement(Vec3.ZERO);
+            abom.setCooldownNextAttack(DASH_ATTACK_AFTER_COOLDOWN);
+            abom.rollNextAttack(ATK_DASH);
+            //if (abom.isAttackPhase()) abom.setAnimation(ANIM_IDLE);
+        }
     }
 }

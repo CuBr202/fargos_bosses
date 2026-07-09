@@ -7,6 +7,7 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.Entity;
@@ -15,14 +16,12 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.entity.IEntityAdditionalSpawnData;
 
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
-public class FreeFortunaBombEntity extends FortunaBombEntity {
+public class FreeFortunaBombEntity extends FortunaBombEntity implements IEntityAdditionalSpawnData {
     private static final double GRAVITY = -0.08;
     private static final double HALF_SQRT2 = Math.sqrt(2) / 2;
 
@@ -84,16 +83,24 @@ public class FreeFortunaBombEntity extends FortunaBombEntity {
             addExplosionDirection(direction);
         }
     }
+
+    public List<Vec3> getExplosionDirections() {
+        return Collections.unmodifiableList(explosionDirections);
+    }
+
     public void setExplosionDirectionsUniformly(int directions) {
+        if (directions <= 0) return;
+        setExplosionDirectionsUniformly(directions, random.nextDouble());
+    }
+
+    public void setExplosionDirectionsUniformly(int directions, double randomOffset) {
         if (directions <= 0) return;
         clearExplosionDirections();
         for(int i=0; i<directions; i++){
             double partDirection = i/(double)directions;
-            addExplosionDirection(Math.cos(partDirection*Math.PI*2),0,Math.sin(partDirection*Math.PI*2));
+            addExplosionDirection(Math.cos((partDirection + randomOffset) * Math.PI * 2), 0, Math.sin((partDirection + randomOffset) * Math.PI * 2));
         }
     }
-
-
 
     @Override
     public void tick() {
@@ -123,6 +130,25 @@ public class FreeFortunaBombEntity extends FortunaBombEntity {
             if (level().isClientSide) {
                 level().addParticle(ParticleTypes.SMOKE, getX(), getY() + 0.5D, getZ(), 0.0D, 0.0D, 0.0D);
             }
+        }
+    }
+
+    @Override
+    public void writeSpawnData(FriendlyByteBuf buffer) {
+        buffer.writeVarInt(explosionDirections.size());
+        for (Vec3 direction : explosionDirections) {
+            buffer.writeDouble(direction.x);
+            buffer.writeDouble(direction.y);
+            buffer.writeDouble(direction.z);
+        }
+    }
+
+    @Override
+    public void readSpawnData(FriendlyByteBuf additionalData) {
+        explosionDirections.clear();
+        int size = additionalData.readVarInt();
+        for (int i = 0; i < size; i++) {
+            addExplosionDirection(additionalData.readDouble(), additionalData.readDouble(), additionalData.readDouble());
         }
     }
 

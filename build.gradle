@@ -36,7 +36,7 @@ plugins {
     id 'eclipse'
     id 'idea'
     id 'net.minecraftforge.gradle' version '[6.0,6.2)'
-    id 'org.parchmentmc.librarian.forgegradle' version '1.+'
+    id 'org.parchmentmc.librarian.forgegradle' version '1.2.0.7-dev-SNAPSHOT'
 }
 
 gradle.projectsEvaluated {
@@ -276,6 +276,9 @@ dependencies {
 
     compileOnly fg.deobf("curse.maven:apothic-attributes-898963:5634071")
     runtimeOnly fg.deobf("curse.maven:apothic-attributes-898963:5634071")
+
+    compileOnly fg.deobf("curse.maven:artifacts-312353:7903806")
+    runtimeOnly fg.deobf("curse.maven:artifacts-312353:7903806")
 
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 }

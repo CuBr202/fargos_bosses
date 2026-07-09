@@ -14,6 +14,9 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec3;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 public class FreeFortunaBombRenderer extends EntityRenderer<FreeFortunaBombEntity> {
     private static final ResourceLocation TEXTURE = MeetYourFight.rl("textures/entity/fortuna_dice.png");
@@ -71,9 +74,13 @@ public class FreeFortunaBombRenderer extends EntityRenderer<FreeFortunaBombEntit
             scale *= scale;
             scale = (1 - scale) * 0.125F;
             model.setupAnim(entity, 0, 0, 0, 0, 0);
-            for (int i = 0; i < 4; i++) {
-                poseStack.mulPose(Axis.YP.rotationDegrees(45));
+            for (Vec3 direction : entity.getExplosionDirections()) {
+                Vec3 normalized = direction.normalize();
                 poseStack.pushPose();
+                poseStack.mulPose(new Quaternionf().rotationTo(
+                        new Vector3f(1.0F, 0.0F, 0.0F),
+                        new Vector3f((float) normalized.x, (float) normalized.y, (float) normalized.z)));
+                poseStack.translate(16.0F, 0.0F, 0.0F);
                 poseStack.scale(64, scale, scale);
                 model.renderToBuffer(poseStack, warningVertex, packedLight, OverlayTexture.NO_OVERLAY, 1, 1, 1, 1);
                 poseStack.popPose();
