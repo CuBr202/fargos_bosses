@@ -7,7 +7,10 @@ import com.cubr.fargo_bosses.fargo_bosses.client.renderer.FreeFortunaBombRendere
 import com.cubr.fargo_bosses.fargo_bosses.client.renderer.MutantModel;
 import com.cubr.fargo_bosses.fargo_bosses.client.renderer.MutantRenderer;
 import com.cubr.fargo_bosses.fargo_bosses.registry.ModEntities;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.model.geom.builders.CubeDeformation;
+import net.miauczel.legendary_monsters.entity.client.Render.SoulShieldRenderer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -20,6 +23,12 @@ public class ClientEvents {
         event.registerEntityRenderer(ModEntities.ABOMINATION.get(), AbominationRenderer::new);
         event.registerEntityRenderer(ModEntities.MUTANT.get(), MutantRenderer::new);
         event.registerEntityRenderer(ModEntities.FREE_FORTUNA_BOMB.get(), FreeFortunaBombRenderer::new);
+        event.registerEntityRenderer(ModEntities.ROTATING_SOUL_SHIELD.get(), soulShieldRendererProvider());
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static EntityRendererProvider soulShieldRendererProvider() {
+        return context -> (EntityRenderer) new SoulShieldRenderer(context);
     }
 
     @SubscribeEvent

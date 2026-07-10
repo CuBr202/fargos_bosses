@@ -4,6 +4,7 @@ import com.cubr.fargo_bosses.fargo_bosses.FargoBosses;
 import com.cubr.fargo_bosses.fargo_bosses.entity.AbominationEntity;
 import com.cubr.fargo_bosses.fargo_bosses.entity.FreeFortunaBombEntity;
 import com.cubr.fargo_bosses.fargo_bosses.entity.MutantEntity;
+import com.cubr.fargo_bosses.fargo_bosses.entity.RotatingSoulShieldEntity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
@@ -36,6 +37,14 @@ public class ModEntities {
     public static final RegistryObject<EntityType<FreeFortunaBombEntity>> FREE_FORTUNA_BOMB = REGISTER.register("free_fortuna_bomb",
             () -> EntityType.Builder.<FreeFortunaBombEntity>of(FreeFortunaBombEntity::new, MobCategory.MISC)
                     .sized(0.3125F, 0.3125F)
+                    .setUpdateInterval(1)
+                    .setTrackingRange(64)
+                    .setShouldReceiveVelocityUpdates(true)
+                    .build(""));
+
+    public static final RegistryObject<EntityType<RotatingSoulShieldEntity>> ROTATING_SOUL_SHIELD = REGISTER.register("rotating_soul_shield",
+            () -> EntityType.Builder.<RotatingSoulShieldEntity>of(RotatingSoulShieldEntity::new, MobCategory.MISC)
+                    .sized(3.0F, 3.0F)
                     .setUpdateInterval(1)
                     .setTrackingRange(64)
                     .setShouldReceiveVelocityUpdates(true)

@@ -37,12 +37,22 @@ public class Config
             .comment("A list of items to log on common setup.")
             .defineListAllowEmpty("items", List.of("minecraft:iron_ingot"), Config::validateItemName);
 
+    private static final ForgeConfigSpec.IntValue ROTATING_SOUL_SHIELD_PARTICLE_INTERVAL = BUILDER
+            .comment("Client-side tick interval between Rotating Soul Shield particle bursts. Higher values mean fewer particles.")
+            .defineInRange("rotatingSoulShieldParticleInterval", 5, 1, 200);
+
+    private static final ForgeConfigSpec.IntValue ROTATING_SOUL_SHIELD_PARTICLES_PER_BURST = BUILDER
+            .comment("Client-side ghostly soul particles emitted by each Rotating Soul Shield burst.")
+            .defineInRange("rotatingSoulShieldParticlesPerBurst", 1, 0, 10);
+
     static final ForgeConfigSpec SPEC = BUILDER.build();
 
     public static boolean logDirtBlock;
     public static int magicNumber;
     public static String magicNumberIntroduction;
     public static Set<Item> items;
+    public static int rotatingSoulShieldParticleInterval;
+    public static int rotatingSoulShieldParticlesPerBurst;
 
     private static boolean validateItemName(final Object obj)
     {
@@ -60,5 +70,7 @@ public class Config
         items = ITEM_STRINGS.get().stream()
                 .map(itemName -> ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemName)))
                 .collect(Collectors.toSet());
+        rotatingSoulShieldParticleInterval = ROTATING_SOUL_SHIELD_PARTICLE_INTERVAL.get();
+        rotatingSoulShieldParticlesPerBurst = ROTATING_SOUL_SHIELD_PARTICLES_PER_BURST.get();
     }
 }

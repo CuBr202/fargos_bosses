@@ -66,7 +66,7 @@ public class AbominationEntity extends BossEntity {
     private static final int DAGGER_REST_TIME = 160;
     private static final int DAGGER_DRIFT_INTERVAL = 15;
     private static final float DAGGER_DAMAGE = 6.0F;
-    private static final float DAGGER_SPEED = 0.4F;
+    private static final float DAGGER_SPEED = 0.7F;
     private static final int DAGGER_RETURN_TICK = 80;
 
     private static final int DASH_ATTACK_AFTER_COOLDOWN = 20;
@@ -76,8 +76,13 @@ public class AbominationEntity extends BossEntity {
     private static final int DASH_RECOVER = 5;
     private static final double DASH_SPEED = 2;
 
+    private static final int RESTRICTION_BOUNDARY_SHIELDS = 24;
+    private static final float RESTRICTION_BOUNDARY_RADIUS = 20.0F;
+    private static final float RESTRICTION_BOUNDARY_DAMAGE = 10.0F;
+    private static final float RESTRICTION_BOUNDARY_ORBIT_SPEED = Mth.TWO_PI / 160.0F;
 
     private int phase, phaseTimer, attackCooldown, nextAttack;
+    private boolean restrictionBoundaryCreated;
 
     public AbominationEntity(EntityType<? extends AbominationEntity> type, Level level) {
         super(type, level);
@@ -144,6 +149,7 @@ public class AbominationEntity extends BossEntity {
     public SpawnGroupData finalizeSpawn(ServerLevelAccessor worldIn, DifficultyInstance difficultyIn, MobSpawnType reason, @Nullable SpawnGroupData spawnDataIn, @Nullable CompoundTag dataTag) {
         phase = PHASE_1;
         phaseTimer = 0;
+        restrictionBoundaryCreated = false;
         setInvulnerable(false);
         setHealth(getMaxHealth());
         return super.finalizeSpawn(worldIn, difficultyIn, reason, spawnDataIn, dataTag);
@@ -254,6 +260,24 @@ public class AbominationEntity extends BossEntity {
         phaseTimer = TRANSITION_TIME;
         attackCooldown = TRANSITION_TIME;
         setInvulnerable(true);
+        createRestrictionBoundary();
+    }
+
+    private void createRestrictionBoundary() {
+        if (level().isClientSide || restrictionBoundaryCreated) {
+            return;
+        }
+
+        restrictionBoundaryCreated = true;
+        for (int i = 0; i < RESTRICTION_BOUNDARY_SHIELDS; i++) {
+            float angle = i / (float) RESTRICTION_BOUNDARY_SHIELDS * Mth.TWO_PI;
+            RotatingSoulShieldEntity shield = new RotatingSoulShieldEntity(level(), this, 0.0D, RESTRICTION_BOUNDARY_RADIUS, angle, RESTRICTION_BOUNDARY_ORBIT_SPEED, RESTRICTION_BOUNDARY_DAMAGE, true);
+            shield.setManualLifetime(-1);
+            shield.setOrbitAroundCaster(RESTRICTION_BOUNDARY_RADIUS, angle, RESTRICTION_BOUNDARY_ORBIT_SPEED, 0.0D);
+            shield.setPos(getX() + Math.cos(angle) * RESTRICTION_BOUNDARY_RADIUS, getY(), getZ() + Math.sin(angle) * RESTRICTION_BOUNDARY_RADIUS);
+            shield.faceRadiusFrom(getX(), getY(), getZ());
+            level().addFreshEntity(shield);
+        }
     }
 
     private void beginPhase2Transition() {
@@ -295,6 +319,7 @@ public class AbominationEntity extends BossEntity {
         phaseTimer = compound.getInt("PhaseTimer");
         attackCooldown = compound.getInt("AttackCooldown");
         nextAttack = compound.getInt("NxtAt");
+        restrictionBoundaryCreated = compound.getBoolean("RestrictionBoundaryCreated");
         setInvulnerable(phase == PHASE_1_TRANSITION || phase == PHASE_2_TRANSITION || phase == PHASE_3);
     }
 
@@ -305,6 +330,7 @@ public class AbominationEntity extends BossEntity {
         compound.putInt("PhaseTimer", phaseTimer);
         compound.putInt("AttackCooldown", attackCooldown);
         compound.putInt("NxtAt", nextAttack);
+        compound.putBoolean("RestrictionBoundaryCreated", restrictionBoundaryCreated);
     }
 
     //Regular attacks below
