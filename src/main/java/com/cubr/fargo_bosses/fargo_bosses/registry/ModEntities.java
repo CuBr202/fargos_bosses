@@ -2,6 +2,7 @@ package com.cubr.fargo_bosses.fargo_bosses.registry;
 
 import com.cubr.fargo_bosses.fargo_bosses.FargoBosses;
 import com.cubr.fargo_bosses.fargo_bosses.entity.AbominationEntity;
+import com.cubr.fargo_bosses.fargo_bosses.entity.FlexibleEnergyBeamEntity;
 import com.cubr.fargo_bosses.fargo_bosses.entity.FreeFortunaBombEntity;
 import com.cubr.fargo_bosses.fargo_bosses.entity.MutantEntity;
 import com.cubr.fargo_bosses.fargo_bosses.entity.RotatingSoulShieldEntity;
@@ -48,6 +49,14 @@ public class ModEntities {
                     .setUpdateInterval(1)
                     .setTrackingRange(64)
                     .setShouldReceiveVelocityUpdates(true)
+                    .build(""));
+
+    public static final RegistryObject<EntityType<FlexibleEnergyBeamEntity>> FLEXIBLE_ENERGY_BEAM = REGISTER.register("flexible_energy_beam",
+            () -> EntityType.Builder.<FlexibleEnergyBeamEntity>of(FlexibleEnergyBeamEntity::new, MobCategory.MISC)
+                    .sized(0.1F, 0.1F)
+                    .setUpdateInterval(1)
+                    .setTrackingRange(128)
+                    .setShouldReceiveVelocityUpdates(false)
                     .build(""));
 
     @SubscribeEvent

@@ -10,8 +10,11 @@ import lykrast.meetyourfight.entity.ai.StationaryAttack;
 import lykrast.meetyourfight.entity.ai.VexMoveRandomGoal;
 import lykrast.meetyourfight.entity.movement.VexMovementController;
 import lykrast.meetyourfight.registry.MYFSounds;
+import net.miauczel.legendary_monsters.entity.AnimatedMonster.Projectile.LightningBoltEntity;
 import net.miauczel.legendary_monsters.entity.AnimatedMonster.Projectile.ThrownPhantomDaggerEntity;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
@@ -34,11 +37,14 @@ import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.ForgeEventFactory;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 
 public class AbominationEntity extends BossEntity {
     public static final int HP = 200, DMG = 10;
@@ -46,13 +52,15 @@ public class AbominationEntity extends BossEntity {
     public static final int PHASE_1 = 0, PHASE_1_TRANSITION = 1, PHASE_2 = 2, PHASE_2_TRANSITION = 3, PHASE_3 = 4, DEATH_PHASE = 5;
     private static final float PHASE_1_THRESHOLD = 2.0F / 3.0F;
     private static final int TRANSITION_TIME = 2 * 20;
-    private static final int PHASE_3_TIME = 20 * 20;
 
-    public static final int ATK_DICE = 0, ATK_CHIPS_CIRCLE = 1, ATK_DASH = 2, ATK_DAGGER = 3;
+    public static final int ATK_DICE = 0, ATK_CHIPS_CIRCLE = 1, ATK_DASH = 2, ATK_DAGGER = 3, ATK_LINEAR = 4, ATK_LASER = 5;
 
     // Settings
     private static final int DICE_ATTACK_DELAY = 15;
     private static final int DICE_ATTACK_AFTER_COOLDOWN = 20;
+
+    private static final int DICE_AMOUNT_PHASE_1 = 8;
+    private static final int DICE_AMOUNT_PHASE_2 = 12;
 
     private static final int CHIPS_ATTACK_DELAY = 20;
 
@@ -76,6 +84,35 @@ public class AbominationEntity extends BossEntity {
     private static final int DASH_RECOVER = 5;
     private static final double DASH_SPEED = 2;
 
+    private static final int LINEAR_ATTACK_AMOUNT = 10; // notice that the actual attack amount is LINEAR_ATTACK_AMOUNT*2
+    private static final int LINEAR_ATTACK_WINDUP = 30;
+    private static final int LINEAR_ATTACK_COUNT = 20;
+    private static final int LINEAR_ATTACK_INTERVAL = 30; // Initially
+
+    private static final int LINEAR_ATTACK_INTERVAL_FINAL = 10;
+    private static final int LINEAR_ATTACK_DISTANCE = 7;
+
+    private static final int LASER_ALIGN_TIME = 20;
+    private static final double LASER_MOVE_SPEED = 3.0D;
+    private static final double LASER_START_REACH_DISTANCE = 0.5D;
+    private static final int LASER_CHARGE_TIME = 10;
+    private static final int LASER_SWEEP_TIME = 80;
+    private static final int LASER_BEAM_END_BUFFER = 0;
+    private static final int LASER_BEAM_DURATION = LASER_CHARGE_TIME + LASER_SWEEP_TIME + LASER_BEAM_END_BUFFER;
+    private static final int LASER_MIN_REPEATS = 2;
+    private static final int LASER_MAX_REPEATS = 2;
+    private static final float LASER_BASE_DAMAGE = 5.0F;
+    private static final float LASER_MAX_HEALTH_DAMAGE = 0.01F;
+    private static final double LASER_RING_CLEARANCE = 8.0D;
+    private static final float LASER_SIDE_OFFSET = 2.0F;
+    private static final int LASER_ATTACK_AFTER_COOLDOWN = 20;
+    private static final int LASER_ATTACK_THUNDER_ROUNDS = 7;
+    private static final int LASER_ATTACK_THUNDER_WARMUP = 0;
+    private static final int LASER_ATTACK_THUNDER_MAX_LIFETIME = Integer.MAX_VALUE;
+    private static final float LASER_ATTACK_THUNDER_DAMAGE = 5.0F;
+    private static final double LASER_ATTACK_THUNDER_JITTER = 4.0D;
+
+
     private static final int RESTRICTION_BOUNDARY_SHIELDS = 24;
     private static final float RESTRICTION_BOUNDARY_RADIUS = 20.0F;
     private static final float RESTRICTION_BOUNDARY_DAMAGE = 10.0F;
@@ -87,7 +124,7 @@ public class AbominationEntity extends BossEntity {
     public AbominationEntity(EntityType<? extends AbominationEntity> type, Level level) {
         super(type, level);
         moveControl = new VexMovementController(this);
-        xpReward = 50;
+        xpReward = 10000;
     }
 
     @Override
@@ -111,6 +148,8 @@ public class AbominationEntity extends BossEntity {
         goalSelector.addGoal(2, new ChipsAttack(this));
         goalSelector.addGoal(3, new PhantomDaggerAttack(this));
         goalSelector.addGoal(4, new DashAttack(this));
+        goalSelector.addGoal(5, new LinearAttack(this));
+        goalSelector.addGoal(6, new LaserAttack(this));
         goalSelector.addGoal(7, new MoveFrontOfTarget(this, 1));
         goalSelector.addGoal(8, new VexMoveRandomGoal(this, 0.25));
         goalSelector.addGoal(9, new LookAtPlayerGoal(this, Player.class, 3.0F, 1.0F));
@@ -207,11 +246,23 @@ public class AbominationEntity extends BossEntity {
     }
 
     private void rollNextAttack(int ignore) {
-        if (ignore == ATK_DICE && phase == PHASE_1) {
+        if (phase == PHASE_3) {
+            if (ignore == ATK_DICE) {
+                nextAttack = ATK_LASER;
+            }
+            else if (ignore == ATK_LASER) {
+                nextAttack = ATK_LINEAR;
+            }
+            else nextAttack = ATK_DICE;
+        }
+        else if (ignore == ATK_DICE && phase == PHASE_1) {
             nextAttack = ATK_CHIPS_CIRCLE;
         }
         else if (ignore == ATK_DICE && phase == PHASE_2) {
             nextAttack = ATK_DAGGER;
+        }
+        else if (ignore == ATK_DASH && phase == PHASE_2) {
+            nextAttack = ATK_LASER;//random.nextBoolean() ? ATK_LINEAR : ATK_LASER;
         }
         else if (ignore == ATK_CHIPS_CIRCLE || ignore == ATK_DAGGER || ignore == ATK_DICE) {
             nextAttack = ATK_DASH;
@@ -246,7 +297,7 @@ public class AbominationEntity extends BossEntity {
             beginPhase2Transition();
         }
 
-        if (phase == PHASE_1_TRANSITION || phase == PHASE_2_TRANSITION || phase == PHASE_3) {
+        if (phase == PHASE_1_TRANSITION || phase == PHASE_2_TRANSITION) {
             phaseTimer--;
             if (phaseTimer <= 0) {
                 finishTimedPhase();
@@ -299,17 +350,22 @@ public class AbominationEntity extends BossEntity {
         }
         else if (phase == PHASE_2_TRANSITION) {
             phase = PHASE_3;
-            phaseTimer = PHASE_3_TIME;
+            phaseTimer = 0;
             attackCooldown = 0;
             setHealth(1.0F);
             setInvulnerable(true);
-            rollNextAttack(-1);
+            nextAttack = ATK_DICE;
         }
-        else if (phase == PHASE_3) {
-            phase = DEATH_PHASE;
-            setInvulnerable(false);
-            kill();
+    }
+
+    private void finishPhase3() {
+        if (phase != PHASE_3) {
+            return;
         }
+
+        phase = DEATH_PHASE;
+        setInvulnerable(false);
+        kill();
     }
 
     @Override
@@ -359,21 +415,27 @@ public class AbominationEntity extends BossEntity {
             super.start();
             target = abom.getTarget();
             //abom.setAnimation(ANIM_DICE_WINDUP);
-            attackDelay = DICE_ATTACK_DELAY;
+            attackDelay = getPhaseDelay(DICE_ATTACK_DELAY);
             attackRemaining = getAttackCount();
             abom.playSound(MYFSounds.dameFortunaAttack.get(), abom.getSoundVolume(), abom.getVoicePitch());
         }
 
         private int getAttackCount() {
-            if (abom.phase == PHASE_2) return 7;
-            //Phase 1
-            return 6;
+            if (abom.phase == PHASE_1) return 6;
+                //Phase 1
+            else if(abom.phase == PHASE_2) return 7;
+            return 14;
         }
 
         private int getSplitDirectionCount() {
-            if (abom.phase == PHASE_2) return 12;
+            if (abom.phase == PHASE_1) return DICE_AMOUNT_PHASE_1;
             //Phase 1
-            return 8;
+            else if(abom.phase == PHASE_2) return DICE_AMOUNT_PHASE_2;
+            return DICE_AMOUNT_PHASE_2;
+        }
+
+        private int getPhaseDelay(int normalDelay) {
+            return abom.phase == PHASE_3 ? Math.max(1, normalDelay* 2/3) : normalDelay;
         }
 
         @Override
@@ -393,7 +455,7 @@ public class AbominationEntity extends BossEntity {
             double ty = target.getY();
             double tz = target.getZ();
             //Dice bombs
-            attackDelay = attackRemaining == 0 ? 40 : abom.phase == PHASE_3 ? 12 : 20;
+            attackDelay = attackRemaining == 0 ? getPhaseDelay(40) : getPhaseDelay(20);
 
             //abom.shuffleAttackWait = Math.max(abom.shuffleAttackWait, 30);
 
@@ -415,6 +477,15 @@ public class AbominationEntity extends BossEntity {
 
         @Override
         public void stop() {
+            if (abom.phase == PHASE_3) {
+                if (target == null || !target.isAlive()) {
+                    abom.finishPhase3();
+                }
+                else {
+                    abom.rollNextAttack(ATK_DICE);
+                }
+                return;
+            }
             abom.setCooldownNextAttack(DICE_ATTACK_AFTER_COOLDOWN);
             abom.rollNextAttack(ATK_DICE);
             //if we going to shuffle phase, let that handle the next animation
@@ -665,6 +736,365 @@ public class AbominationEntity extends BossEntity {
             //if (abom.isAttackPhase()) abom.setAnimation(ANIM_IDLE);
         }
     }
+
+    private static class LinearAttack extends Goal {
+        private final AbominationEntity abom;
+        private LivingEntity target;
+        private Direction direction;
+        private int attacksRemaining;
+        private int attackDelay;
+
+        public LinearAttack(AbominationEntity abom) {
+            this.abom = abom;
+            setFlags(EnumSet.of(Goal.Flag.MOVE, Goal.Flag.LOOK));
+        }
+
+        @Override
+        public boolean canUse() {
+            return abom.nextAttack == ATK_LINEAR && (abom.phase == PHASE_2 || abom.phase == PHASE_3) && abom.attackCooldown <= 0
+                    && abom.getTarget() != null && abom.getTarget().isAlive();
+        }
+
+        @Override
+        public boolean canContinueToUse() {
+            return abom.nextAttack == ATK_LINEAR && (abom.phase == PHASE_2 || abom.phase == PHASE_3) && attacksRemaining > 0
+                    && target != null && target.isAlive();
+        }
+
+        @Override
+        public boolean requiresUpdateEveryTick() {
+            return true;
+        }
+
+        @Override
+        public void start() {
+            target = abom.getTarget();
+            attacksRemaining = LINEAR_ATTACK_COUNT;
+            attackDelay = LINEAR_ATTACK_WINDUP;
+            abom.attackCooldown = 2;
+
+            BlockPos self = abom.blockPosition();
+            BlockPos targetPos = target.blockPosition();
+            direction = Direction.getNearest(targetPos.getX() - self.getX(), 0, targetPos.getZ() - self.getZ());
+            abom.playSound(SoundEvents.BELL_RESONATE, 2.0F, 1.0F);
+        }
+
+        @Override
+        public void tick() {
+            abom.attackCooldown = 2;
+            attackDelay--;
+            if (attackDelay > 0) {
+                return;
+            }
+
+            attackDelay = (LINEAR_ATTACK_INTERVAL - LINEAR_ATTACK_INTERVAL_FINAL) * attacksRemaining / LINEAR_ATTACK_COUNT + LINEAR_ATTACK_INTERVAL_FINAL;
+            attacksRemaining--;
+            fireProjectileLine();
+
+            if (attacksRemaining <= 0) {
+                stop();
+            }
+        }
+
+        private void fireProjectileLine() {
+            BlockPos targetPos = target.blockPosition();
+            double targetX = targetPos.getX() + 0.5D;
+            double targetY = targetPos.getY() + 0.1D;
+            double targetZ = targetPos.getZ() + 0.5D;
+            if (!target.onGround() && !target.isInWater() && !abom.level().getBlockState(targetPos.below()).blocksMotion()) {
+                targetY -= 1.0D;
+            }
+
+            double directionX = direction.getStepX();
+            double directionZ = direction.getStepZ();
+            int offset = attacksRemaining % 2 == 0 ? 1 : -1;
+            for (int i = -LINEAR_ATTACK_AMOUNT; i <= LINEAR_ATTACK_AMOUNT; i++) {
+                ProjectileLineEntity projectile = abom.readyLineProjectile();
+                projectile.setUp(15 + offset * i, directionX, 0, directionZ,
+                        targetX - LINEAR_ATTACK_DISTANCE * directionX + i * directionZ,
+                        targetY,
+                        targetZ - LINEAR_ATTACK_DISTANCE * directionZ + i * directionX);
+                abom.level().addFreshEntity(projectile);
+            }
+
+            abom.playSound(SoundEvents.BELL_BLOCK, 2.0F,
+                    (abom.random.nextFloat() - abom.random.nextFloat()) * 0.2F + 1.0F);
+        }
+
+        @Override
+        public void stop() {
+            if (abom.phase == PHASE_3) {
+                abom.finishPhase3();
+                return;
+            }
+            abom.setCooldownNextAttack(0);
+            abom.rollNextAttack(ATK_LINEAR);
+        }
+    }
+
+    private static class LaserAttack extends Goal {
+        private static final int PHASE_ALIGN = 0;
+        private static final int PHASE_MOVE_TO_START = 1;
+        private static final int PHASE_CHARGE = 2;
+        private static final int PHASE_SWEEP = 3;
+        private static final int PHASE_DONE = 4;
+
+        private final AbominationEntity abom;
+        private LivingEntity target;
+        private int attackPhase;
+        private int phaseTime;
+        private int sweepsRemaining;
+        private double ringCenterX;
+        private double ringCenterY;
+        private double ringCenterZ;
+        private Vec3 sweepStart;
+        private Vec3 sweepEnd;
+        private float lockedSweepYaw;
+        private boolean ringDetached;
+        private final List<LightningBoltEntity> thunderBolts = new ArrayList<>();
+
+        public LaserAttack(AbominationEntity abom) {
+            this.abom = abom;
+            setFlags(EnumSet.of(Goal.Flag.MOVE, Goal.Flag.LOOK));
+        }
+
+        @Override
+        public boolean requiresUpdateEveryTick() {
+            return true;
+        }
+
+        @Override
+        public boolean canUse() {
+            return abom.nextAttack == ATK_LASER && (abom.phase == PHASE_2 || abom.phase == PHASE_3)
+                    && abom.attackCooldown <= 0 && abom.getTarget() != null && abom.getTarget().isAlive();
+        }
+
+        @Override
+        public boolean canContinueToUse() {
+            return abom.nextAttack == ATK_LASER && (abom.phase == PHASE_2 || abom.phase == PHASE_3)
+                    && attackPhase != PHASE_DONE && target != null && target.isAlive();
+        }
+
+        @Override
+        public void start() {
+            target = abom.getTarget();
+            attackPhase = PHASE_ALIGN;
+            phaseTime = LASER_ALIGN_TIME;
+            sweepsRemaining = LASER_MIN_REPEATS + abom.random.nextInt(LASER_MAX_REPEATS - LASER_MIN_REPEATS + 1);
+            ringCenterX = abom.getX();
+            ringCenterY = findGroundY();
+            ringCenterZ = abom.getZ();
+            ringDetached = false;
+            thunderBolts.clear();
+            abom.setDeltaMovement(Vec3.ZERO);
+            abom.playSound(MYFSounds.dameFortunaAttack.get(), abom.getSoundVolume(), abom.getVoicePitch());
+        }
+
+        @Override
+        public void tick() {
+            if (attackPhase == PHASE_ALIGN) {
+                alignToGround();
+            }
+            else if (attackPhase == PHASE_MOVE_TO_START) {
+                moveToSweepStart();
+            }
+            else if (attackPhase == PHASE_CHARGE) {
+                holdAtSweepStart();
+                if (--phaseTime <= 0) {
+                    attackPhase = PHASE_SWEEP;
+                    phaseTime = LASER_SWEEP_TIME;
+                    abom.playSound(SoundEvents.BEACON_POWER_SELECT, 2.0F, 1.0F);
+                }
+            }
+            else if (attackPhase == PHASE_SWEEP) {
+                sweepAcrossRing();
+            }
+        }
+
+        private void alignToGround() {
+            abom.getMoveControl().setWantedPosition(ringCenterX, ringCenterY, ringCenterZ, 1.5D);
+            if (--phaseTime <= 0 || Math.abs(abom.getY() - ringCenterY) <= 0.25D) {
+                ringCenterX = abom.getX();
+                ringCenterZ = abom.getZ();
+                detachRestrictionRing();
+                prepareSweep();
+            }
+        }
+
+        private void prepareSweep() {
+            Vec3 outward = new Vec3(target.getX() - ringCenterX, 0, target.getZ() - ringCenterZ);
+            if (outward.lengthSqr() < 1.0E-4) {
+                outward = new Vec3(abom.getX() - ringCenterX, 0, abom.getZ() - ringCenterZ);
+            }
+            if (outward.lengthSqr() < 1.0E-4) {
+                outward = new Vec3(0, 0, 1);
+            }
+
+            outward = outward.normalize();
+            double distanceStart = RESTRICTION_BOUNDARY_RADIUS + LASER_RING_CLEARANCE;
+            double distanceEnd = RESTRICTION_BOUNDARY_RADIUS - LASER_RING_CLEARANCE;
+            sweepStart = new Vec3(ringCenterX + outward.x * distanceStart, ringCenterY, ringCenterZ + outward.z * distanceStart);
+            sweepEnd = new Vec3(ringCenterX - outward.x * distanceEnd, ringCenterY, ringCenterZ - outward.z * distanceEnd);
+            attackPhase = PHASE_MOVE_TO_START;
+        }
+
+        private void moveToSweepStart() {
+            abom.getMoveControl().setWantedPosition(sweepStart.x, sweepStart.y, sweepStart.z, LASER_MOVE_SPEED);
+            if (abom.distanceToSqr(sweepStart.x, sweepStart.y, sweepStart.z) <= LASER_START_REACH_DISTANCE * LASER_START_REACH_DISTANCE) {
+                faceRingCenter();
+                lockedSweepYaw = abom.yHeadRot;
+                spawnSideLasers();
+                attackPhase = PHASE_CHARGE;
+                phaseTime = LASER_CHARGE_TIME;
+                abom.setDeltaMovement(Vec3.ZERO);
+                abom.playSound(SoundEvents.BEACON_ACTIVATE, 2.0F, 1.0F);
+            }
+        }
+
+        private void spawnSideLasers() {
+            FlexibleEnergyBeamEntity left = new FlexibleEnergyBeamEntity(ModEntities.FLEXIBLE_ENERGY_BEAM.get(), abom.level(), abom,
+                    LASER_BEAM_DURATION, LASER_BASE_DAMAGE, LASER_MAX_HEALTH_DAMAGE, 90.0F, 0.0F);
+            left.setRelativePositionOffset(0.0F, -LASER_SIDE_OFFSET, 0.0F);
+
+            FlexibleEnergyBeamEntity right = new FlexibleEnergyBeamEntity(ModEntities.FLEXIBLE_ENERGY_BEAM.get(), abom.level(), abom,
+                    LASER_BEAM_DURATION, LASER_BASE_DAMAGE, LASER_MAX_HEALTH_DAMAGE, -90.0F, 0.0F);
+            right.setRelativePositionOffset(0.0F, LASER_SIDE_OFFSET, 0.0F);
+
+            abom.level().addFreshEntity(left);
+            abom.level().addFreshEntity(right);
+        }
+
+        private void holdAtSweepStart() {
+            faceRingCenter();
+            abom.getMoveControl().setWantedPosition(sweepStart.x, sweepStart.y, sweepStart.z, 1.0D);
+            abom.setDeltaMovement(Vec3.ZERO);
+        }
+
+        private void sweepAcrossRing() {
+            phaseTime--;
+            double progress = 1.0D - phaseTime / (double) LASER_SWEEP_TIME;
+            Vec3 destination = sweepStart.scale(1.0D - progress).add(sweepEnd.scale(progress));
+            setFacing(lockedSweepYaw);
+            abom.setPos(destination.x, destination.y, destination.z);
+            abom.setDeltaMovement(Vec3.ZERO);
+
+            int thunderInterval = Math.max(1, LASER_SWEEP_TIME / LASER_ATTACK_THUNDER_ROUNDS);
+            if (phaseTime > 0 && phaseTime % thunderInterval == 0) {
+                spawnThunderRow();
+            }
+
+            if (phaseTime <= 0) {
+                sweepsRemaining--;
+                if (sweepsRemaining > 0) {
+                    prepareSweep();
+                }
+                else {
+                    finishAttack();
+                }
+            }
+        }
+
+        private void faceRingCenter() {
+            Vec3 toCenter = new Vec3(ringCenterX - abom.getX(), 0, ringCenterZ - abom.getZ());
+            if (toCenter.lengthSqr() > 1.0E-4) {
+                float yaw = (float) (Math.atan2(toCenter.z, toCenter.x) * Mth.RAD_TO_DEG) - 90.0F;
+                setFacing(yaw);
+            }
+        }
+
+        private void spawnThunderRow() {
+            Vec3 sweepDirection = sweepEnd.subtract(sweepStart).normalize();
+            Vec3 lateral = new Vec3(-sweepDirection.z, 0, sweepDirection.x);
+            double spacing = RESTRICTION_BOUNDARY_RADIUS * 2.0D / (LASER_ATTACK_THUNDER_ROUNDS - 1);
+            double centerOffset = (LASER_ATTACK_THUNDER_ROUNDS - 1) * 0.5D;
+
+            for (int i = 0; i < LASER_ATTACK_THUNDER_ROUNDS; i++) {
+                double distance = (i - centerOffset) * spacing;
+                double x = abom.getX() + lateral.x * distance + randomJitter();
+                double z = abom.getZ() + lateral.z * distance + randomJitter();
+                LightningBoltEntity bolt = new LightningBoltEntity(abom.level(), x, ringCenterY, z, 0.0F,
+                        LASER_ATTACK_THUNDER_WARMUP, abom, LASER_ATTACK_THUNDER_MAX_LIFETIME, LASER_ATTACK_THUNDER_DAMAGE);
+                thunderBolts.add(bolt);
+                abom.level().addFreshEntity(bolt);
+            }
+        }
+
+        private double randomJitter() {
+            return (abom.random.nextDouble() * 2.0D - 1.0D) * LASER_ATTACK_THUNDER_JITTER;
+        }
+
+        private void setFacing(float yaw) {
+            abom.setYRot(yaw);
+            abom.yHeadRot = yaw;
+            abom.yBodyRot = yaw;
+            abom.setXRot(0.0F);
+        }
+
+        private double findGroundY() {
+            BlockPos position = abom.blockPosition();
+            while (position.getY() > abom.level().getMinBuildHeight()) {
+                if (abom.level().getBlockState(position.below()).blocksMotion()) {
+                    return position.getY();
+                }
+                position = position.below();
+            }
+            return abom.getY();
+        }
+
+        private void detachRestrictionRing() {
+            AABB searchArea = new AABB(ringCenterX, ringCenterY, ringCenterZ, ringCenterX, ringCenterY, ringCenterZ)
+                    .inflate(RESTRICTION_BOUNDARY_RADIUS + 8.0D);
+            for (RotatingSoulShieldEntity shield : abom.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
+                    shield -> shield.getCaster() == abom)) {
+                shield.switchToAroundPosition(ringCenterX, ringCenterY, ringCenterZ);
+            }
+            ringDetached = true;
+        }
+
+        private void restoreRestrictionRing() {
+            if (!ringDetached) {
+                return;
+            }
+
+            AABB searchArea = new AABB(ringCenterX, ringCenterY, ringCenterZ, ringCenterX, ringCenterY, ringCenterZ)
+                    .inflate(RESTRICTION_BOUNDARY_RADIUS + 8.0D);
+            for (RotatingSoulShieldEntity shield : abom.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
+                    shield -> shield.getCaster() == abom)) {
+                shield.switchToAroundCaster();
+            }
+            ringDetached = false;
+        }
+
+        private void finishAttack() {
+            attackPhase = PHASE_DONE;
+            discardThunderBolts();
+            restoreRestrictionRing();
+            abom.setDeltaMovement(Vec3.ZERO);
+        }
+
+        private void discardThunderBolts() {
+            for (LightningBoltEntity bolt : thunderBolts) {
+                if (!bolt.isRemoved()) {
+                    bolt.discard();
+                }
+            }
+            thunderBolts.clear();
+        }
+
+        @Override
+        public void stop() {
+            discardThunderBolts();
+            restoreRestrictionRing();
+            abom.setDeltaMovement(Vec3.ZERO);
+            if (abom.phase == PHASE_3 && (target == null || !target.isAlive())) {
+                abom.finishPhase3();
+                return;
+            }
+            abom.setCooldownNextAttack(abom.phase == PHASE_3 ? 0 : LASER_ATTACK_AFTER_COOLDOWN);
+            abom.rollNextAttack(ATK_LASER);
+        }
+    }
+
 
     private static class DashAttack extends Goal {
         private final AbominationEntity abom;

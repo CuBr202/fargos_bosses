@@ -11,6 +11,7 @@ import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.model.geom.builders.CubeDeformation;
 import net.miauczel.legendary_monsters.entity.client.Render.SoulShieldRenderer;
+import net.miauczel.legendary_monsters.entity.client.Render.EnergyBeamRender2d;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -24,11 +25,17 @@ public class ClientEvents {
         event.registerEntityRenderer(ModEntities.MUTANT.get(), MutantRenderer::new);
         event.registerEntityRenderer(ModEntities.FREE_FORTUNA_BOMB.get(), FreeFortunaBombRenderer::new);
         event.registerEntityRenderer(ModEntities.ROTATING_SOUL_SHIELD.get(), soulShieldRendererProvider());
+        event.registerEntityRenderer(ModEntities.FLEXIBLE_ENERGY_BEAM.get(), energyBeamRendererProvider());
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static EntityRendererProvider soulShieldRendererProvider() {
         return context -> (EntityRenderer) new SoulShieldRenderer(context);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static EntityRendererProvider energyBeamRendererProvider() {
+        return context -> (EntityRenderer) new EnergyBeamRender2d(context);
     }
 
     @SubscribeEvent
