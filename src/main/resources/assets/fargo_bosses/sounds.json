@@ -1,0 +1,26 @@
+{
+  "abom_phase_1": {
+    "category": "music",
+    "sounds": [{ "name": "fargo_bosses:abom_phase_1", "stream": true }]
+  },
+  "abom_phase_2": {
+    "category": "music",
+    "sounds": [{ "name": "fargo_bosses:abom_phase_2_3", "stream": true }]
+  },
+  "mutant_phase_1": {
+    "category": "music",
+    "sounds": [{ "name": "fargo_bosses:mutant_phase_1", "stream": true }]
+  },
+  "mutant_phase_2": {
+    "category": "music",
+    "sounds": [{ "name": "fargo_bosses:mutant_phase_2", "stream": true }]
+  },
+  "mutant_phase_3": {
+    "category": "music",
+    "sounds": [{ "name": "fargo_bosses:mutant_phase_3", "stream": true }]
+  },
+  "mutant_phase_4": {
+    "category": "music",
+    "sounds": [{ "name": "fargo_bosses:mutant_phase_4", "stream": true }]
+  }
+}

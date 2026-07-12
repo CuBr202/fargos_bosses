@@ -190,10 +190,12 @@ public class RotatingSoulShieldEntity extends SoulShieldEntity {
                 return;
             }
 
-            DamageSource damageSource = new DamageSource(level().registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(ModDamageTypes.GHOST), livingentity);
+            DamageSource damageSource = new DamageSource(level().registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(ModDamageTypes.GHOST), this, livingentity);
             boolean hurt = impactEntity.hurt(damageSource, getDamage() + MathUtils.entityBasedHpDamage(impactEntity, 3));
             if (hurt) {
-                EntityUtil.applyStackingEffect(impactEntity, ModEffects.SOUL_FRACTURE.get(), 1, 4, MathUtils.toTicks(10));
+                if (!(livingentity instanceof AbominationEntity abomination) || abomination.isSoulFractureEnabled()) {
+                    EntityUtil.applyStackingEffect(impactEntity, ModEffects.SOUL_FRACTURE.get(), 1, 4, MathUtils.toTicks(10));
+                }
                 if (livingentity != null) {
                     livingentity.heal(5);
                 }

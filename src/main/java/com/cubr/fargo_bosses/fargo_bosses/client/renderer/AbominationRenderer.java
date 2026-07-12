@@ -14,6 +14,7 @@ public class AbominationRenderer extends HumanoidMobRenderer<AbominationEntity, 
     public AbominationRenderer(Context context) {
         super(context, new AbominationModel(context.bakeLayer(AbominationModel.MODEL)), 0.5F);
         addLayer(new GenericGlowLayer<>(this, GLOW));
+        addLayer(new AbominationArmorLayer(this, context.getModelSet()));
     }
 
     @Override

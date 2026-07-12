@@ -30,6 +30,7 @@ public class FreeFortunaBombEntity extends FortunaBombEntity implements IEntityA
     @Nullable
     private UUID bomberId;
     private int moveFuse;
+    private float projectileDamage = Float.NaN;
     private final List<Vec3> explosionDirections = new ArrayList<>();
 
     public FreeFortunaBombEntity(EntityType<? extends FreeFortunaBombEntity> entityType, Level level) {
@@ -100,6 +101,10 @@ public class FreeFortunaBombEntity extends FortunaBombEntity implements IEntityA
             double partDirection = i/(double)directions;
             addExplosionDirection(Math.cos((partDirection + randomOffset) * Math.PI * 2), 0, Math.sin((partDirection + randomOffset) * Math.PI * 2));
         }
+    }
+
+    public void setProjectileDamage(float damage) {
+        projectileDamage = damage;
     }
 
     @Override
@@ -179,6 +184,9 @@ public class FreeFortunaBombEntity extends FortunaBombEntity implements IEntityA
         proj.setOwner(owner);
         proj.setPos(position());
         proj.setVariant(ProjectileLineEntity.VAR_DAME_FORTUNA);
+        if (!Float.isNaN(projectileDamage)) {
+            proj.getPersistentData().putFloat(AbominationEntity.MYF_PROJECTILE_DAMAGE_TAG, projectileDamage);
+        }
         proj.setUp(1, direction.x, direction.y, direction.z, getX() + direction.x * 0.1, getY() + direction.y * 0.1, getZ() + direction.z * 0.1);
         level().addFreshEntity(proj);
     }
@@ -203,12 +211,14 @@ public class FreeFortunaBombEntity extends FortunaBombEntity implements IEntityA
             directions.add(directionTag);
         }
         compound.put("Directions", directions);
+        compound.putFloat("ProjectileDamage", projectileDamage);
     }
 
     @Override
     protected void readAdditionalSaveData(CompoundTag compound) {
         setFuse(compound.getShort("Fuse"));
         moveFuse = compound.getShort("MFuse");
+        projectileDamage = compound.contains("ProjectileDamage") ? compound.getFloat("ProjectileDamage") : Float.NaN;
         if (compound.hasUUID("Bomber")) {
             bomberId = compound.getUUID("Bomber");
         }

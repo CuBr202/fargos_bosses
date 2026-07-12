@@ -3,6 +3,7 @@ package com.cubr.fargo_bosses.fargo_bosses.registry;
 import com.cubr.fargo_bosses.fargo_bosses.FargoBosses;
 import com.cubr.fargo_bosses.fargo_bosses.entity.AbominationEntity;
 import com.cubr.fargo_bosses.fargo_bosses.entity.FlexibleEnergyBeamEntity;
+import com.cubr.fargo_bosses.fargo_bosses.entity.FrostSpiritEntity;
 import com.cubr.fargo_bosses.fargo_bosses.entity.FreeFortunaBombEntity;
 import com.cubr.fargo_bosses.fargo_bosses.entity.MutantEntity;
 import com.cubr.fargo_bosses.fargo_bosses.entity.RotatingSoulShieldEntity;
@@ -59,9 +60,18 @@ public class ModEntities {
                     .setShouldReceiveVelocityUpdates(false)
                     .build(""));
 
+    public static final RegistryObject<EntityType<FrostSpiritEntity>> FROST_SPIRIT = REGISTER.register("frost_spirit",
+            () -> EntityType.Builder.<FrostSpiritEntity>of(FrostSpiritEntity::new, MobCategory.MONSTER)
+                    .sized(0.75F, 1.5F)
+                    .setUpdateInterval(1)
+                    .setTrackingRange(64)
+                    .setShouldReceiveVelocityUpdates(true)
+                    .build(""));
+
     @SubscribeEvent
     public static void registerEntityAttributes(EntityAttributeCreationEvent event) {
         event.put(ABOMINATION.get(), AbominationEntity.createAttributes().build());
         event.put(MUTANT.get(), MutantEntity.createAttributes().build());
+        event.put(FROST_SPIRIT.get(), FrostSpiritEntity.createAttributes().build());
     }
 }

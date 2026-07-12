@@ -4,6 +4,7 @@ import com.cubr.fargo_bosses.fargo_bosses.FargoBosses;
 import com.cubr.fargo_bosses.fargo_bosses.client.renderer.AbominationModel;
 import com.cubr.fargo_bosses.fargo_bosses.client.renderer.AbominationRenderer;
 import com.cubr.fargo_bosses.fargo_bosses.client.renderer.FreeFortunaBombRenderer;
+import com.cubr.fargo_bosses.fargo_bosses.client.renderer.FrostSpiritRenderer;
 import com.cubr.fargo_bosses.fargo_bosses.client.renderer.MutantModel;
 import com.cubr.fargo_bosses.fargo_bosses.client.renderer.MutantRenderer;
 import com.cubr.fargo_bosses.fargo_bosses.registry.ModEntities;
@@ -26,6 +27,7 @@ public class ClientEvents {
         event.registerEntityRenderer(ModEntities.FREE_FORTUNA_BOMB.get(), FreeFortunaBombRenderer::new);
         event.registerEntityRenderer(ModEntities.ROTATING_SOUL_SHIELD.get(), soulShieldRendererProvider());
         event.registerEntityRenderer(ModEntities.FLEXIBLE_ENERGY_BEAM.get(), energyBeamRendererProvider());
+        event.registerEntityRenderer(ModEntities.FROST_SPIRIT.get(), FrostSpiritRenderer::new);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
