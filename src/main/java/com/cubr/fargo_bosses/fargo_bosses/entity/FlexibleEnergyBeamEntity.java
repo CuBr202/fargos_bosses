@@ -27,6 +27,8 @@ public class FlexibleEnergyBeamEntity extends EnergyBeamEntity {
     private static final EntityDataAccessor<Float> FORWARD_OFFSET = SynchedEntityData.defineId(FlexibleEnergyBeamEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> SIDE_OFFSET = SynchedEntityData.defineId(FlexibleEnergyBeamEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> VERTICAL_OFFSET = SynchedEntityData.defineId(FlexibleEnergyBeamEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Boolean> DETACHED = SynchedEntityData.defineId(FlexibleEnergyBeamEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> DETACH_ON_ACTIVATION = SynchedEntityData.defineId(FlexibleEnergyBeamEntity.class, EntityDataSerializers.BOOLEAN);
 
     public FlexibleEnergyBeamEntity(EntityType<? extends FlexibleEnergyBeamEntity> type, Level level) {
         super(type, level);
@@ -71,6 +73,18 @@ public class FlexibleEnergyBeamEntity extends EnergyBeamEntity {
         entityData.set(VERTICAL_OFFSET, vertical);
     }
 
+    public void detachFromCaster() {
+        entityData.set(DETACHED, true);
+    }
+
+    public boolean isDetachedFromCaster() {
+        return entityData.get(DETACHED);
+    }
+
+    public void detachFromCasterOnActivation() {
+        entityData.set(DETACH_ON_ACTIVATION, true);
+    }
+
     @Override
     protected void defineSynchedData() {
         super.defineSynchedData();
@@ -79,6 +93,8 @@ public class FlexibleEnergyBeamEntity extends EnergyBeamEntity {
         entityData.define(FORWARD_OFFSET, 0.0F);
         entityData.define(SIDE_OFFSET, 0.0F);
         entityData.define(VERTICAL_OFFSET, 0.0F);
+        entityData.define(DETACHED, false);
+        entityData.define(DETACH_ON_ACTIVATION, false);
     }
 
     @Override
@@ -98,12 +114,17 @@ public class FlexibleEnergyBeamEntity extends EnergyBeamEntity {
         if (caster == null && level().isClientSide) {
             return;
         }
-        if (caster == null || !caster.isAlive()) {
+        if (caster == null || (!isDetachedFromCaster() && !caster.isAlive())) {
             discard();
             return;
         }
 
-        updateWithCaster();
+        if (!isDetachedFromCaster()) {
+            updateWithCaster();
+            if (entityData.get(DETACH_ON_ACTIVATION) && tickCount > 20) {
+                detachFromCaster();
+            }
+        }
         calculateEndPos();
 
         if (on && tickCount > 20) {
