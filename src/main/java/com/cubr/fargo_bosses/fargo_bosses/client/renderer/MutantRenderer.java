@@ -14,6 +14,7 @@ public class MutantRenderer extends MobRenderer<MutantEntity, MutantModel> {
     public MutantRenderer(Context context) {
         super(context, new MutantModel(context.bakeLayer(MutantModel.MODEL)), 0.5F);
         addLayer(new GenericGlowLayer<>(this, GLOW));
+        addLayer(new MutantWingLayer(this));
         addLayer(new MutantArmorLayer(this, context.getModelSet()));
     }
 
