@@ -153,9 +153,13 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
     private boolean bombArenaDetachedForLaser;
     private double bombArenaCenterX, bombArenaCenterY, bombArenaCenterZ;
     private boolean laserAttackActive;
+    private boolean waitingForFinalHit;
+    private int finalHitLandingState;
+    private double finalHitGroundY;
 
     public AbominationEntity(EntityType<? extends AbominationEntity> type, Level level) {
         super(type, level);
+        BossBarUtil.useNotchedTwelve(this);
         moveControl = new VexMovementController(this);
         xpReward = 10000;
     }
@@ -265,6 +269,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
     @Override
     protected void registerGoals() {
         goalSelector.addGoal(0, new FloatGoal(this));
+        goalSelector.addGoal(1, new FinalHitWaitGoal());
         goalSelector.addGoal(1, new DiceAttack(this));
         goalSelector.addGoal(2, new ChipsAttack(this));
         goalSelector.addGoal(3, new PhantomDaggerAttack(this));
@@ -318,6 +323,8 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         phase = PHASE_1;
         phaseTimer = 0;
         restrictionBoundaryCreated = false;
+        waitingForFinalHit = false;
+        finalHitLandingState = 0;
         setInvulnerable(false);
         setPowered(false);
         entityData.set(PHASE_TWO_MUSIC, false);
@@ -388,7 +395,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
     }
 
     public boolean isAttackPhase() {
-        return phase == PHASE_1 || phase == PHASE_2 || phase == PHASE_3;
+        return !waitingForFinalHit && (phase == PHASE_1 || phase == PHASE_2 || phase == PHASE_3);
     }
 
 
@@ -462,6 +469,10 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         if (attackCooldown > 0) attackCooldown--;
         if (bombSafetyTicks > 0) bombSafetyTicks--;
         updatePoweredState();
+        if (waitingForFinalHit) {
+            super.customServerAiStep();
+            return;
+        }
         if (phase == PHASE_1 && tickCount > 10 && getHealth() <= getMaxHealth() * configFloat(Config.ABOMINATION_PHASE_1_THRESHOLD)) {
             beginPhase1Transition();
         }
@@ -480,13 +491,18 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
     }
 
     private void updatePoweredState() {
-        boolean phaseInvulnerable = phase == PHASE_1_TRANSITION || phase == PHASE_2_TRANSITION || phase == PHASE_3;
+        boolean phaseInvulnerable = phase == PHASE_1_TRANSITION || phase == PHASE_2_TRANSITION
+                || (phase == PHASE_3 && !waitingForFinalHit);
         setPowered(isDamageImmune());
         setInvulnerable(phaseInvulnerable);
     }
 
     private boolean isDamageImmune() {
-        if (phase == PHASE_1_TRANSITION || phase == PHASE_2_TRANSITION || phase == PHASE_3 || laserAttackActive) {
+        if (waitingForFinalHit) {
+            return false;
+        }
+        if (phase == PHASE_1_TRANSITION || phase == PHASE_2_TRANSITION
+                || (phase == PHASE_3 && !waitingForFinalHit) || laserAttackActive) {
             return true;
         }
 
@@ -577,14 +593,77 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
     }
 
     private void finishPhase3() {
-        if (phase != PHASE_3) {
+        if (phase != PHASE_3 || waitingForFinalHit) {
             return;
         }
 
-        phase = DEATH_PHASE;
+        waitingForFinalHit = true;
+        finalHitLandingState = 0;
+        nextAttack = -1;
+        attackCooldown = 0;
+        laserAttackActive = false;
+        setDeltaMovement(Vec3.ZERO);
         setPowered(false);
         setInvulnerable(false);
-        kill();
+    }
+
+    private void updateFinalHitLanding() {
+        LivingEntity target = getTarget();
+        if (finalHitLandingState == 0 && target != null && target.isAlive()) {
+            getMoveControl().setWantedPosition(getX(), target.getY(), getZ(), 1.0D);
+            if (Math.abs(getY() - target.getY()) <= getBbHeight()) {
+                finalHitGroundY = findGroundY();
+                finalHitLandingState = 1;
+            }
+            return;
+        }
+
+        if (finalHitLandingState <= 1) {
+            if (finalHitLandingState == 0) {
+                finalHitGroundY = findGroundY();
+                finalHitLandingState = 1;
+            }
+            getMoveControl().setWantedPosition(getX(), finalHitGroundY, getZ(), 1.0D);
+            if (Math.abs(getY() - finalHitGroundY) <= getBbHeight()) {
+                finalHitLandingState = 2;
+            }
+            return;
+        }
+
+        getNavigation().stop();
+        setDeltaMovement(Vec3.ZERO);
+    }
+
+    private double findGroundY() {
+        BlockPos position = BlockPos.containing(getX(), getY(), getZ());
+        while (position.getY() > level().getMinBuildHeight()) {
+            if (level().getBlockState(position.below()).blocksMotion()) {
+                return position.getY();
+            }
+            position = position.below();
+        }
+        return getY();
+    }
+
+    private class FinalHitWaitGoal extends Goal {
+        private FinalHitWaitGoal() {
+            setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK));
+        }
+
+        @Override
+        public boolean canUse() {
+            return waitingForFinalHit;
+        }
+
+        @Override
+        public boolean canContinueToUse() {
+            return waitingForFinalHit;
+        }
+
+        @Override
+        public void tick() {
+            updateFinalHitLanding();
+        }
     }
 
     @Override
@@ -605,7 +684,11 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         bombArenaCenterX = compound.getDouble("BombArenaCenterX");
         bombArenaCenterY = compound.getDouble("BombArenaCenterY");
         bombArenaCenterZ = compound.getDouble("BombArenaCenterZ");
-        setInvulnerable(phase == PHASE_1_TRANSITION || phase == PHASE_2_TRANSITION || phase == PHASE_3);
+        waitingForFinalHit = compound.getBoolean("WaitingForFinalHit");
+        finalHitLandingState = compound.getInt("FinalHitLandingState");
+        finalHitGroundY = compound.getDouble("FinalHitGroundY");
+        setInvulnerable(phase == PHASE_1_TRANSITION || phase == PHASE_2_TRANSITION
+                || (phase == PHASE_3 && !waitingForFinalHit));
     }
 
     @Override
@@ -624,6 +707,9 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         compound.putDouble("BombArenaCenterX", bombArenaCenterX);
         compound.putDouble("BombArenaCenterY", bombArenaCenterY);
         compound.putDouble("BombArenaCenterZ", bombArenaCenterZ);
+        compound.putBoolean("WaitingForFinalHit", waitingForFinalHit);
+        compound.putInt("FinalHitLandingState", finalHitLandingState);
+        compound.putDouble("FinalHitGroundY", finalHitGroundY);
     }
 
     public boolean isInsideBombSafetyCircle(LivingEntity entity) {

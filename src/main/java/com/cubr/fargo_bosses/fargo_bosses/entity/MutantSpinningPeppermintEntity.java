@@ -106,15 +106,31 @@ public class MutantSpinningPeppermintEntity extends SpinningPeppermintEntity {
             setDeltaMovement(getDeltaMovement().add(velocity));
             move(MoverType.SELF, getDeltaMovement());
         }
-        else if (orbitCenter != null) {
-            float angle = getStartAngle() + tickCount * getSpinSpeed() * spinDirection;
-            Vec3 offset = new Vec3(0.0D, 0.0D, getSpinRadius())
-                    .yRot((float) -Math.toRadians(angle));
-            setPos(orbitCenter.add(offset));
-            setDeltaMovement(Vec3.ZERO);
+        else {
+            updateOrbitPosition();
         }
 
         hurtEntities();
+    }
+
+    /** Updates a non-straight peppermint after its caster's position changes. */
+    public void updateOrbitPosition() {
+        if (orbitCenter == null || isStraight()) {
+            return;
+        }
+        float angle = getStartAngle() + tickCount * getSpinSpeed() * spinDirection;
+        Vec3 offset = new Vec3(0.0D, 0.0D, getSpinRadius())
+                .yRot((float) -Math.toRadians(angle));
+        Vec3 destination = orbitCenter.add(offset);
+        move(MoverType.SELF, destination.subtract(position()));
+        setDeltaMovement(Vec3.ZERO);
+    }
+
+    /** Applies the normal strict-hitbox damage check at the peppermint's current position. */
+    public void damageContactsNow() {
+        if (!level().isClientSide) {
+            hurtEntities();
+        }
     }
 
     private void updateSpiral() {

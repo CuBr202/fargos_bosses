@@ -1,5 +1,6 @@
 package com.cubr.fargo_bosses.fargo_bosses;
 
+import com.cubr.fargo_bosses.fargo_bosses.entity.MutantEntity;
 import com.cubr.fargo_bosses.fargo_bosses.registry.ModEntities;
 import com.cubr.fargo_bosses.fargo_bosses.registry.ModSounds;
 import com.cubr.fargo_bosses.fargo_bosses.entity.AbominationEntity;
@@ -102,12 +103,18 @@ public class FargoBosses {
 
     }
 
+    /*
     @SubscribeEvent
     public void debugDifficulty(MobSpawnEvent event){
         if(event.getEntity() instanceof AbominationEntity abom){
             ((AbominationEntity) abom).setBossDifficulty(2);
         }
+
+        if(event.getEntity() instanceof MutantEntity mutant){
+            ((MutantEntity) mutant).setBossDifficulty(2);
+        }
     }
+    */
 
     public static ResourceLocation rl(String path) {
         return new ResourceLocation(MODID, path);

@@ -35,13 +35,18 @@ public class MutantFlareBombEntity extends Flare_Bomb_Entity {
     }
 
     private void spawnRadialFlameJets() {
-        for (int directionIndex = 0; directionIndex < MutantEntity.FLARE_BOMB_JET_DIRECTIONS; directionIndex++) {
-            double angle = directionIndex * Math.PI * 2.0D / MutantEntity.FLARE_BOMB_JET_DIRECTIONS;
-            for (int jetIndex = 1; jetIndex <= MutantEntity.FLARE_BOMB_JETS_PER_DIRECTION; jetIndex++) {
-                double distance = jetIndex * MutantEntity.FLARE_BOMB_JET_SPACING;
+        MutantEntity mutant = getOwner() instanceof MutantEntity owner ? owner : null;
+        int directions = mutant != null ? mutant.getFlareBombJetDirections() : 6;
+        int jetsPerDirection = mutant != null ? mutant.getFlareBombJetsPerDirection() : 12;
+        float spacing = mutant != null ? mutant.getFlareBombJetSpacing() : 1.0F;
+        int delayPerBlock = mutant != null ? mutant.getFlareBombJetDelayPerBlock() : 2;
+        for (int directionIndex = 0; directionIndex < directions; directionIndex++) {
+            double angle = directionIndex * Math.PI * 2.0D / directions;
+            for (int jetIndex = 1; jetIndex <= jetsPerDirection; jetIndex++) {
+                double distance = jetIndex * spacing;
                 double x = getX() + Math.cos(angle) * distance;
                 double z = getZ() + Math.sin(angle) * distance;
-                spawnGroundJet(x, z, (float) angle, jetIndex * MutantEntity.FLARE_BOMB_JET_DELAY_PER_BLOCK);
+                spawnGroundJet(x, z, (float) angle, jetIndex * delayPerBlock);
             }
         }
     }
@@ -60,8 +65,9 @@ public class MutantFlareBombEntity extends Flare_Bomb_Entity {
                         surfaceOffset = shape.max(Direction.Axis.Y);
                     }
                 }
+                float damage = getOwner() instanceof MutantEntity mutant ? mutant.getFlareBombJetDamage() : 66.0F;
                 Flame_Jet_Entity jet = new Flame_Jet_Entity(level(), x, position.getY() + surfaceOffset, z, rotation, delay,
-                        MutantEntity.FLARE_BOMB_JET_DAMAGE, getOwner() instanceof LivingEntity owner ? owner : null);
+                        damage, getOwner() instanceof LivingEntity owner ? owner : null);
                 level().addFreshEntity(jet);
                 return;
             }

@@ -4,6 +4,7 @@ import com.github.L_Ender.cataclysm.entity.AnimationMonster.BossMonsters.The_Lev
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 
 /** A Leviathan portal blast whose ray follows its caster's current facing. */
 public class MutantPortalAbyssBlastEntity extends Portal_Abyss_Blast_Entity {
@@ -17,6 +18,14 @@ public class MutantPortalAbyssBlastEntity extends Portal_Abyss_Blast_Entity {
 
     public boolean belongsTo(LivingEntity entity) {
         return caster == entity;
+    }
+
+    @Override
+    public Portal_Abyss_Blast_Entity.LaserbeamHitResult raytraceEntities(Level world, Vec3 from, Vec3 to) {
+        Portal_Abyss_Blast_Entity.LaserbeamHitResult result = super.raytraceEntities(world, from, to);
+        // Keep the collision endpoint for the beam, but never let the parent destroy the impacted blocks.
+        blockSide = null;
+        return result;
     }
 
     @Override

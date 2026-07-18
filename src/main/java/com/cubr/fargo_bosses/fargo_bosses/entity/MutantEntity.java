@@ -1,5 +1,6 @@
 package com.cubr.fargo_bosses.fargo_bosses.entity;
 
+import com.cubr.fargo_bosses.fargo_bosses.Config;
 import com.cubr.fargo_bosses.fargo_bosses.FargoBosses;
 import com.cubr.fargo_bosses.fargo_bosses.client.sound.MutantMusic;
 import com.cubr.fargo_bosses.fargo_bosses.registry.ModEntities;
@@ -16,6 +17,7 @@ import com.github.L_Ender.cataclysm.entity.projectile.Void_Rune_Entity;
 import com.github.L_Ender.cataclysm.entity.projectile.Water_Spear_Entity;
 import com.github.L_Ender.cataclysm.init.ModParticle;
 import com.github.L_Ender.cataclysm.init.ModItems;
+import com.github.L_Ender.cataclysm.init.ModEffect;
 import com.github.alexmodguy.alexscaves.server.entity.item.WaterBoltEntity;
 import com.github.alexmodguy.alexscaves.server.entity.item.DarkArrowEntity;
 import com.github.alexmodguy.alexscaves.server.entity.item.ThrownWasteDrumEntity;
@@ -53,6 +55,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.MobType;
 import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.entity.PowerableMob;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -81,10 +84,12 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
-public class MutantEntity extends BossEntity {
+public class MutantEntity extends BossEntity implements PowerableMob {
 
     // Constants. DO NOT change this part.
     private static final EntityDataAccessor<Integer> MUSIC_PHASE = SynchedEntityData.defineId(MutantEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> BOSS_DIFFICULTY = SynchedEntityData.defineId(MutantEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Boolean> POWERED = SynchedEntityData.defineId(MutantEntity.class, EntityDataSerializers.BOOLEAN);
     public static final int PHASE_1 = 0, PHASE_1_TRANSITION = 1, PHASE_2 = 2, PHASE_2_TRANSITION = 3,
             PHASE_3 = 4, PHASE_3_TRANSITION = 5, PHASE_4 = 6, DEATH_PHASE = 7;
 
@@ -114,235 +119,238 @@ public class MutantEntity extends BossEntity {
     private static final int ATTACK_PHASE_FOUR_FINAL_SPARK = 3;
     private static final int ATTACK_HISTORY_SIZE = 3;
 
-    // Settings. Please change the part below into configs.
+    // Difficulty-backed settings loaded from Config.
 
-    public static final int HP = 750; // 500, 750, 1000
-    private static final int NORMAL_ATTACK_DAMAGE = 66; // 44, 66, 99
+    public int HP = 750;
+    private int NORMAL_ATTACK_DAMAGE = 66;
 
-    private static final int RESTRICTION_BOUNDARY_DAMAGE = 99; //66, 99, 132
-    private static final float GREAT_LASER_DAMAGE = 132; // 99, 132, 198
-    private static final int TRANSITION_TIME = 2 * 20; // 40, 40, 40
-    private static final int RESTRICTION_BOUNDARY_SHIELDS = 24; // 24, 24, 24
-    private static final int RESTRICTION_BOUNDARY_RADIUS = 25; // 25, 25, 20
-    private static final int RESTRICTION_BOUNDARY_ORBIT_TICKS = 160; // 160, 160, 160
-    private static final int MAGNETIC_ATTACK_DURATION = 200; // 150, 200, 200
-    private static final int MAGNETIC_ATTACK_PREPARE_TIME = 30; // 50, 30, 10
-    private static final int MAGNETIC_ATTACK_DAMAGE = NORMAL_ATTACK_DAMAGE;
-    private static final int MAGNETIC_WEAPON_HEIGHT = 1; // 1, 1, 1
-    private static final float MAGNETIC_WEAPON_CHASE_SPEED = 0.25F; // 0.15, 0.25, 0.35
-    private static final float MAGNETIC_WEAPON_HIT_DISTANCE = 4.0F; // 3.0, 4.0, 5.0
-    private static final int MAGNETIC_WEAPON_HIT_COOLDOWN = 5; // 10, 5, 2
-    private static final int MAGNETIC_WEAPON_RANGE_PARTICLE_INTERVAL = 2; // 2, 2, 2
-    private static final int MAGNETIC_WEAPON_RANGE_PARTICLE_POINTS = 16; // 16, 16, 16
-    private static final float MAGNETIC_WEAPON_RANGE_PARTICLE_HEIGHT = 0.05F; //0.05, 0.05, 0.05
-    private static final int WATER_BOLT_ATTACK_POSITIONS = 4; // 3, 4, 5
-    private static final int WATER_BOLT_DISTANCE = 12; // 15, 12, 10
-    private static final int WATER_BOLT_Y_OFFSET = 1; // 1, 1, 1
-    private static final int WATER_BOLT_VOLLEYS_PER_POSITION = 3; // 3, 3, 5
-    private static final int WATER_BOLT_BOLTS_PER_VOLLEY = 3; // 3, 3, 4
-    private static final int WATER_BOLT_PREPARE_TIME = 30; // 50, 30, 10
-    private static final int WATER_BOLT_VOLLEY_INTERVAL = 5; // 5, 5, 2
-    private static final int WATER_BOLT_SPREAD_DEGREES = 30; // 35, 30, 25
-    private static final float WATER_BOLT_SPEED = 3.0F; // 4.0, 3.0, 2.0
-    private static final int WATER_BOLT_INACCURACY = 0; // 0, 0, 0
-    private static final int PEPPERMINT_ATTACK_DURATION = 300; // 240, 300, 360
-    private static final int PEPPERMINT_ATTACK_PREPARE_TIME = 30; // 50, 30, 10
-    private static final int PEPPERMINT_SMALL_RING_COUNT = 3; // 3, 3, 3
-    private static final float PEPPERMINT_SMALL_RING_RADIUS = 2.0F; // 1, 2, 3
-    private static final int PEPPERMINT_LARGE_RING_COUNT = 9; // 9, 9, 9
-    private static final float PEPPERMINT_LARGE_RING_RADIUS = 13.0F; // 15, 13, 11
-    private static final float PEPPERMINT_SPIN_SPEED = 7.0F; // 7.0, 7.0, 7.0
-    private static final int PEPPERMINT_STRAIGHT_INTERVAL = 30; // 50, 30, 15
-    private static final int PEPPERMINT_STRAIGHT_COUNT = 3; // 1, 3, 5
-    private static final int PEPPERMINT_STRAIGHT_SPREAD_DEGREES = 30; // 30, 30, 20
-    private static final float PEPPERMINT_DAMAGE = NORMAL_ATTACK_DAMAGE;
-    private static final float PEPPERMINT_HIT_RANGE = 0.5F; // 0.5, 0.5, 0.5
-    private static final float PEPPERMINT_FOLLOW_SPEED = 1.0F; // 0.75, 1.0, 1.25
-    private static final int DINOSAUR_ATTACK_PREPARE_TIME = 40; // 60, 40, 10
-    private static final int DINOSAUR_DASH_COUNT = 4; // 3, 4, 5
-    private static final int DINOSAUR_DASH_DURATION = 10; // 10, 10, 8
-    private static final int DINOSAUR_DASH_RECOVER_TIME = 10; // 20, 10, 0
-    private static final float DINOSAUR_DASH_SPEED = 2.5F; // 2.0, 2.5, 3.0
-    private static final float DINOSAUR_DASH_CONTACT_RANGE = 1.0F; // 1.0, 1.0, 1.0
-    private static final int DINOSAUR_DASH_TRAIL_PARTICLES = 2; // 2, 2, 2
-    private static final float DINOSAUR_TOSS_HEIGHT = 6.0F; // 6.0, 6.0, 9.0
-    private static final float DINOSAUR_TOSS_DISTANCE = 12.0F; // 12.0, 12.0, 18.0
-    private static final float DINOSAUR_TOSS_MOVE_SPEED = 1.0F; // 1.0, 1.0, 2.0
-    private static final float DINOSAUR_TOSS_POSITION_TOLERANCE = 2.0F; // 2.0, 2.0, 2.0
-    private static final float DINOSAUR_SPEAR_SPEED = 2.5F; // 1.5, 2.5, 4.0
-    private static final int DINOSAUR_SPEAR_WINDUP_TIME = 20; // 30, 20, 10
-    private static final int DINOSAUR_SPEAR_MAX_FLIGHT_TIME = 100; // 100, 100, 100
-    private static final float DINOSAUR_RETURN_SPEED = 3.0F; // 3.0, 3.0, 3.0
-    private static final int ARROW_ATTACK_DRUM_ROUNDS = 3; // 3, 3, 4
-    private static final int ARROW_ATTACK_PREPARE_TIME = 30; // 50, 30, 10
-    private static final int ARROW_ATTACK_DRUM_INTERVAL = 80; // 120, 80, 40
-    private static final int ARROW_ATTACK_DRUM_COUNT = 4; // 4, 4, 4
-    private static final float ARROW_ATTACK_DRUM_THROW_SPEED = 1.5F; // 2.0, 1.5, 1.2
-    private static final float ARROW_ATTACK_DRUM_THROW_HEIGHT = 0.8F; // 0.8, 0.8, 0.8
-    private static final int ARROW_ATTACK_RAIN_INTERVAL = 20; // 30, 20, 20
-    private static final int ARROW_ATTACK_RAIN_COUNT = 15; // 10, 15, 20
-    private static final int ARROW_ATTACK_RAIN_MAX_HEIGHT = 15; // 15, 15, 15
-    private static final float ARROW_ATTACK_RAIN_HORIZONTAL_SPREAD = 8.0F; // 2.0, 2.0, 2.0
-    private static final float ARROW_ATTACK_RAIN_VERTICAL_SPREAD = 2.0F; // 2.0, 2.0, 2.0
-    private static final float ARROW_ATTACK_RAIN_DAMAGE = NORMAL_ATTACK_DAMAGE;
-    private static final float ARROW_ATTACK_RAIN_MIN_SPEED = 0.5F; // 0.25, 0.5, 0.75
-    private static final float ARROW_ATTACK_RAIN_SPEED_VARIANCE = 1.5F; // 1.0, 1.5, 1.75
-    private static final float ARROW_ATTACK_RAIN_INACCURACY = 20.0F; // 20.0, 20.0, 20.0
-    private static final int WATER_SPEAR_CENTER_WAVES = 8; // 6, 8, 8
-    private static final int WATER_SPEAR_CENTER_SPEARS_PER_WAVE = 8; // 6, 8, 7
-    private static final int WATER_SPEAR_CENTER_INTERVAL = 30; // 40, 30, 25
-    private static final int WATER_SPEAR_CENTER_RANGE = 15; // 20, 15, 20
-    private static final float WATER_SPEAR_CENTER_DAMAGE = NORMAL_ATTACK_DAMAGE;
-    private static final float WATER_SPEAR_CENTER_ACCELERATION = 1.0F; // 1.0, 1.0, 1.5
-    private static final int WATER_SPEAR_PARALLEL_WAVES = 12; // 8, 12, 24
-    private static final int WATER_SPEAR_PARALLEL_SPEARS_PER_WAVE = 13; // 13, 13, 13
-    private static final int WATER_SPEAR_PARALLEL_INTERVAL = 20; // 30, 20, 10
-    private static final int WATER_SPEAR_PARALLEL_RANGE = 15; // 15, 15, 15
-    private static final int WATER_SPEAR_PARALLEL_SPACING = 3; // 4, 3, 2.5
-    private static final float WATER_SPEAR_PARALLEL_MIN_ANGLE_DEGREES = 60.0F; // 60.0, 60.0, 60.0
-    private static final float WATER_SPEAR_PARALLEL_DAMAGE = NORMAL_ATTACK_DAMAGE;
-    private static final float WATER_SPEAR_PARALLEL_ACCELERATION = 1.0F; // 1.0, 1.0, 1.5
-    private static final int WATER_SPEAR_PARALLEL_PREDICTION_INTERVAL = 2; // 2, 2, 2
-    private static final int WATER_SPEAR_PARALLEL_PREDICTION_POINTS = 30; // 30, 30, 30
-    private static final int WATER_SPEAR_PARALLEL_PREDICTION_LENGTH = 30; // 30, 30, 30
-    private static final int LASER_SPREAD_BURSTS = 50; // 30, 50, 80
-    private static final int LASER_SPREAD_ARMS = 4; // 3, 4, 5
-    private static final int LASER_SPREAD_INTERVAL = 2; // 3, 2, 2
-    private static final float LASER_SPREAD_ORIGIN_HEIGHT = 0.5F; // 0.5, 0.5, 0.5
+    private int RESTRICTION_BOUNDARY_DAMAGE = 99;
+    private float GREAT_LASER_DAMAGE = 132;
+    private int TRANSITION_TIME = 2 * 20;
+    private int RESTRICTION_BOUNDARY_SHIELDS = 24;
+    private int RESTRICTION_BOUNDARY_RADIUS = 25;
+    private int RESTRICTION_BOUNDARY_ORBIT_TICKS = 160;
+    private int MAGNETIC_ATTACK_DURATION = 200;
+    private int MAGNETIC_ATTACK_PREPARE_TIME = 30;
+    private int MAGNETIC_ATTACK_DAMAGE = NORMAL_ATTACK_DAMAGE;
+    private int MAGNETIC_WEAPON_HEIGHT = 1;
+    private float MAGNETIC_WEAPON_CHASE_SPEED = 0.25F;
+    private float MAGNETIC_WEAPON_HIT_DISTANCE = 4.0F;
+    private int MAGNETIC_WEAPON_HIT_COOLDOWN = 5;
+    private int MAGNETIC_WEAPON_RANGE_PARTICLE_INTERVAL = 2;
+    private int MAGNETIC_WEAPON_RANGE_PARTICLE_POINTS = 16;
+    private float MAGNETIC_WEAPON_RANGE_PARTICLE_HEIGHT = 0.05F;
+    private int WATER_BOLT_ATTACK_POSITIONS = 4;
+    private int WATER_BOLT_DISTANCE = 12;
+    private int WATER_BOLT_Y_OFFSET = 1;
+    private int WATER_BOLT_VOLLEYS_PER_POSITION = 3;
+    private int WATER_BOLT_BOLTS_PER_VOLLEY = 3;
+    private int WATER_BOLT_PREPARE_TIME = 30;
+    private int WATER_BOLT_VOLLEY_INTERVAL = 5;
+    private int WATER_BOLT_SPREAD_DEGREES = 30;
+    private float WATER_BOLT_SPEED = 3.0F;
+    private int WATER_BOLT_INACCURACY = 0;
+    private int PEPPERMINT_ATTACK_DURATION = 300;
+    private int PEPPERMINT_ATTACK_PREPARE_TIME = 30;
+    private int PEPPERMINT_SMALL_RING_COUNT = 3;
+    private float PEPPERMINT_SMALL_RING_RADIUS = 2.0F;
+    private int PEPPERMINT_LARGE_RING_COUNT = 9;
+    private float PEPPERMINT_LARGE_RING_RADIUS = 13.0F;
+    private float PEPPERMINT_SPIN_SPEED = 7.0F;
+    private int PEPPERMINT_STRAIGHT_INTERVAL = 30;
+    private int PEPPERMINT_STRAIGHT_COUNT = 3;
+    private int PEPPERMINT_STRAIGHT_SPREAD_DEGREES = 30;
+    private float PEPPERMINT_DAMAGE = NORMAL_ATTACK_DAMAGE;
+    private float PEPPERMINT_HIT_RANGE = 0.5F;
+    private float PEPPERMINT_FOLLOW_SPEED = 1.0F;
+    private int DINOSAUR_ATTACK_PREPARE_TIME = 40;
+    private int DINOSAUR_DASH_COUNT = 4;
+    private int DINOSAUR_DASH_DURATION = 10;
+    private int DINOSAUR_DASH_RECOVER_TIME = 10;
+    private float DINOSAUR_DASH_SPEED = 2.5F;
+    private float DINOSAUR_DASH_CONTACT_RANGE = 1.0F;
+    private int DINOSAUR_DASH_TRAIL_PARTICLES = 2;
+    private float DINOSAUR_TOSS_HEIGHT = 6.0F;
+    private float DINOSAUR_TOSS_DISTANCE = 12.0F;
+    private float DINOSAUR_TOSS_MOVE_SPEED = 1.0F;
+    private float DINOSAUR_TOSS_POSITION_TOLERANCE = 2.0F;
+    private float DINOSAUR_SPEAR_SPEED = 2.5F;
+    private int DINOSAUR_SPEAR_WINDUP_TIME = 20;
+    private int DINOSAUR_SPEAR_MAX_FLIGHT_TIME = 100;
+    private float DINOSAUR_RETURN_SPEED = 3.0F;
+    private int ARROW_ATTACK_DRUM_ROUNDS = 3;
+    private int ARROW_ATTACK_PREPARE_TIME = 30;
+    private int ARROW_ATTACK_DRUM_INTERVAL = 80;
+    private int ARROW_ATTACK_DRUM_COUNT = 4;
+    private float ARROW_ATTACK_DRUM_THROW_SPEED = 1.5F;
+    private float ARROW_ATTACK_DRUM_THROW_HEIGHT = 0.8F;
+    private int ARROW_ATTACK_RAIN_INTERVAL = 20;
+    private int ARROW_ATTACK_RAIN_COUNT = 15;
+    private int ARROW_ATTACK_RAIN_MAX_HEIGHT = 15;
+    private float ARROW_ATTACK_RAIN_HORIZONTAL_SPREAD = 8.0F;
+    private float ARROW_ATTACK_RAIN_VERTICAL_SPREAD = 2.0F;
+    private float ARROW_ATTACK_RAIN_DAMAGE = NORMAL_ATTACK_DAMAGE;
+    private float ARROW_ATTACK_RAIN_MIN_SPEED = 0.5F;
+    private float ARROW_ATTACK_RAIN_SPEED_VARIANCE = 1.5F;
+    private float ARROW_ATTACK_RAIN_INACCURACY = 20.0F;
+    private int ARROW_ATTACK_DIFFICULTY_TWO_REST_TIME = 30;
+    private int WATER_SPEAR_CENTER_WAVES = 8;
+    private int WATER_SPEAR_CENTER_SPEARS_PER_WAVE = 8;
+    private int WATER_SPEAR_CENTER_INTERVAL = 30;
+    private int WATER_SPEAR_CENTER_RANGE = 15;
+    private float WATER_SPEAR_CENTER_DAMAGE = NORMAL_ATTACK_DAMAGE;
+    private float WATER_SPEAR_CENTER_ACCELERATION = 1.0F;
+    private int WATER_SPEAR_PARALLEL_WAVES = 12;
+    private int WATER_SPEAR_PARALLEL_SPEARS_PER_WAVE = 13;
+    private int WATER_SPEAR_PARALLEL_INTERVAL = 20;
+    private int WATER_SPEAR_PARALLEL_RANGE = 15;
+    private float WATER_SPEAR_PARALLEL_SPACING = 3F;
+    private float WATER_SPEAR_PARALLEL_MIN_ANGLE_DEGREES = 60.0F;
+    private float WATER_SPEAR_PARALLEL_DAMAGE = NORMAL_ATTACK_DAMAGE;
+    private float WATER_SPEAR_PARALLEL_ACCELERATION = 1.0F;
+    private int WATER_SPEAR_PARALLEL_PREDICTION_INTERVAL = 2;
+    private int WATER_SPEAR_PARALLEL_PREDICTION_POINTS = 30;
+    private int WATER_SPEAR_PARALLEL_PREDICTION_LENGTH = 30;
+    private int LASER_SPREAD_BURSTS = 50;
+    private int LASER_SPREAD_ARMS = 4;
+    private int LASER_SPREAD_INTERVAL = 2;
+    private float LASER_SPREAD_ORIGIN_HEIGHT = 0.5F;
 
-    private static final float LASER_SPREAD_INITIAL_SPEED = 0.01F; // 0.008, 0.01, 0.015
-    private static final float LASER_SPREAD_DAMAGE = NORMAL_ATTACK_DAMAGE;
-    private static final int LASER_MISSILE_MISSILE_BURSTS = 8; // 4, 8, 12
-    private static final int LASER_MISSILE_MISSILE_INTERVAL = 5; // 5, 5, 4
-    private static final int LASER_MISSILE_REST_TIME = 60; // 80, 60, 60
-    private static final float LASER_MISSILE_MISSILE_SIDE_ANGLE = 45.0F; // 45, 45, 30
-    private static final int LASER_MISSILE_MISSILE_SIDE = 1; // 1, 1, 1
-    private static final float LASER_MISSILE_ANGLE_RANDOMNESS = 3.0F; // 0.0, 3.0, 6.0
-    private static final float LASER_MISSILE_ORIGIN_HEIGHT = 1.5F; // 1.5, 1.5, 1.5
-    private static final float LASER_MISSILE_MISSILE_DAMAGE = NORMAL_ATTACK_DAMAGE; // 1.5, 1.5, 1.5
-    private static final float LASER_MISSILE_MISSILE_SPEED = 1.0F; // 0.8, 1.0, 1.2
-    private static final int LASER_MISSILE_MISSILE_LAUNCH_TIME = 10; // 10, 10, 8
-    private static final int HALBERD_ATTACK_ROUNDS = 3; // 3, 3, 4
-    private static final int HALBERD_MARK_TIME = 20; // 30, 20, 10
-    private static final int HALBERD_REST_TIME = 20; // 40, 20, 0
-    private static final float HALBERD_MARK_RADIUS = 3.0F; // 3, 3, 3
-    private static final int HALBERD_MARK_PARTICLE_COUNT = 8; // 8, 8, 8
-    private static final float HALBERD_MOVE_SPEED = 3.0F; // 2.0, 3.0, 6.0
-    private static final float HALBERD_SMASH_HEIGHT = 10.0F; // 12, 10, 8
-    private static final float HALBERD_SMASH_SPEED = 6.0F; // 4.0, 6.0, 12.0
-    private static final float HALBERD_SMASH_DAMAGE = NORMAL_ATTACK_DAMAGE*2;
-    private static final float HALBERD_SMASH_HITBOX_RADIUS = 4.0F; // 3.0, 4.0, 5.0
-    private static final int HALBERD_SPIRAL_ARMS = 8; // 6, 8, 12
-    private static final int HALBERD_SPIRAL_PER_ARM = 18; // 12, 18, 24
-    private static final float HALBERD_SPIRAL_RADIUS = 108.0F; // 54.0, 108.0, 216.0
-    private static final int HALBERD_SPIRAL_WARMUP = 0; // 0, 0, 0
-    private static final float HALBERD_SPIRAL_DAMAGE = NORMAL_ATTACK_DAMAGE;
-    private static final float HALBERD_ARENA_EDGE_PADDING = 4.0F; // 4.0, 4.0, 4.0
-    private static final float HALBERD_MIN_MARK_ANGLE_DIFFERENCE = 120.0F; // 120.0, 120.0, 120.0
-    private static final int VOID_RUNE_ATTACK_PREPARE_TIME = 40; // 60, 40, 10
-    private static final int VOID_RUNE_ATTACK_ROUNDS = 60; // 40, 60, 80
-    private static final int VOID_RUNE_ATTACK_INTERVAL = 2; // 3, 2, 1
-    private static final int VOID_RUNE_LINE_LENGTH = RESTRICTION_BOUNDARY_RADIUS;
-    private static final int VOID_RUNE_ROTATION_PERIOD = 23; // 23, 23, 31
-    private static final int VOID_RUNE_WARMUP = 0; // 0, 0, 0
-    private static final float VOID_RUNE_DAMAGE = NORMAL_ATTACK_DAMAGE;
-    private static final int ABYSSAL_MINE_COUNT = 40; // 30, 40, 50
-    private static final float ABYSSAL_MINE_ARENA_PADDING = 2.0F; // 2.0, 2.0, 2.0
-    private static final int ABYSSAL_MINE_WARMUP = 0; // 0, 0, 0
-    private static final float ABYSSAL_INITIAL_ANGLE_DEGREES = 30.0F; // 30, 30, 30
-    private static final int ABYSSAL_PREDICTION_TIME = 40; // 60, 40, 20
-    private static final int ABYSSAL_PREDICTION_PARTICLES = 30; // 30, 30, 30
-    private static final float ABYSSAL_PREDICTION_PARTICLE_SPACING = 1.0F; // 1.0, 1.0, 1.0
-    private static final float ABYSSAL_PREDICTION_WALL_HEIGHT = 5.0F; // 5.0, 5.0, 5.0
-    private static final float ABYSSAL_PREDICTION_WALL_VERTICAL_SPACING = 1.0F; // 1.0, 1.0, 1.0
-    private static final int ABYSSAL_PREDICTION_WALL_REFRESH_INTERVAL = 2; // 2, 2, 2
-    private static final int ABYSSAL_LASER_ROTATION_TIME = 200; // 150, 200, 300
-    private static final float ABYSSAL_LASER_TURN_DEGREES_PER_SECOND = 54.0F; // 36.0, 54.0, 72.0
-    private static final float ABYSSAL_LASER_TURN_DEGREES_PER_TICK = ABYSSAL_LASER_TURN_DEGREES_PER_SECOND / 20.0F;
-    private static final float ABYSSAL_LASER_DAMAGE = GREAT_LASER_DAMAGE; // 66, 132, 198
-    private static final float ABYSSAL_LASER_HP_DAMAGE = 0.0F; // 0.0, 0.0, 0.0
-    private static final int FLARE_ATTACK_BOMBS = 12; // 8, 12, 24
-    private static final int FLARE_ATTACK_INTERVAL = 20; // 30, 20, 10
-    private static final float FLARE_STRAFE_RADIUS = 12.0F; // 12.0, 12.0, 16.0
-    private static final float FLARE_STRAFE_ANGULAR_SPEED = 0.08F; // 0.06, 0.08, 0.12
-    private static final float FLARE_STRAFE_MOVE_SPEED = 1.0F; // 0.8, 1.0, 1.5
-    private static final float FLARE_BOMB_SPEED = 1.25F; // 1.0, 1.25, 1.5
-    private static final float FLARE_BOMB_INACCURACY = 0.0F; // 0.0, 0.0, 0.0
-    public static final int FLARE_BOMB_JET_DIRECTIONS = 6; // 4, 6, 8
-    public static final int FLARE_BOMB_JETS_PER_DIRECTION = 12; // 8, 12, 24
-    public static final float FLARE_BOMB_JET_SPACING = 1.0F; // 1.0, 1.0, 1.0
-    public static final int FLARE_BOMB_JET_DELAY_PER_BLOCK = 2; // 2, 2, 1
-    public static final float FLARE_BOMB_JET_DAMAGE = NORMAL_ATTACK_DAMAGE;
-    private static final int IGNIS_WAVE_INTERVAL = 40; // 60, 40, 20
-    private static final int IGNIS_FALLING_BLOCK_DURATION = 10; // 10, 10, 10
-    private static final float IGNIS_FALLING_BLOCK_UPWARD_SPEED = 0.2F; // 0.2, 0.2, 0.2
-    private static final float IGNIS_FALLING_BLOCK_UPWARD_VARIANCE = 0.15F; // 0.15, 0.15, 0.15
-    private static final float IGNIS_FALLING_BLOCK_DAMAGE = NORMAL_ATTACK_DAMAGE;
-    private static final int IGNIS_FLAME_STRIKE_DURATION = 60; // 80, 60, 60
-    private static final int IGNIS_FLAME_STRIKE_WAIT_TIME = 0; // 0, 0, 0
-    private static final int IGNIS_FLAME_STRIKE_DELAY = 0; //0, 0, 0
-    private static final float IGNIS_FLAME_STRIKE_RADIUS = 3.0F; // 3.0, 3.0, 5.0
-    private static final float IGNIS_FLAME_STRIKE_DAMAGE = NORMAL_ATTACK_DAMAGE;
-    private static final float IGNIS_FLAME_STRIKE_HP_DAMAGE = 0.0F; // 0.0, 0.0, 0.0
-    private static final int SANDSTORM_ATTACK_DURATION = 240; // 180, 240, 240
-    private static final int SANDSTORM_COUNT = 3; // 2, 3, 3
-    private static final float SANDSTORM_RADIUS = 8.0F; // 8.0, 8.0, 8.0
-    private static final float SANDSTORM_ORBIT_SPEED = 0.04F; // 0.02, 0.04, 0.08
-    private static final int SANDSTORM_VOID_VORTEX_COUNT = 8; // 6, 8, 8
-    private static final float SANDSTORM_VOID_VORTEX_RADIUS = RESTRICTION_BOUNDARY_RADIUS * 0.75F;
-    private static final float SANDSTORM_FOLLOW_SPEED = 1.0F; // 0.8, 1.0, 1.0
-    private static final float SANDSTORM_CONTACT_DAMAGE = NORMAL_ATTACK_DAMAGE;
-    private static final int NORMAL_SHOOTING_INTERVAL = 2; // 4, 2, 1
-    private static final int NORMAL_SHOOTING_PREPARE_TIME = 40; // 60, 40, 10
-    private static final int NORMAL_SHOOTING_MIN_SHOTS = 30; // 15, 30, 60
-    private static final int NORMAL_SHOOTING_MAX_SHOTS = 40; // 20, 40, 80
-    private static final float NORMAL_SHOOTING_LASER_INITIAL_SPEED = 0.2F; // 0.1, 0.2, 0.3
-    private static final int NORMAL_DASH_COUNT = 3; // 3, 3, 4
-    private static final int NORMAL_DASH_WINDUP = 10; // 20, 10, 5
-    private static final int NORMAL_DASH_DURATION = 10; // 10, 10, 10
-    private static final int NORMAL_DASH_RECOVER = 10; // 20, 10, 5
-    private static final int NORMAL_DASH_SPEED = 2; // 1.5, 2, 2
-    private static final int NORMAL_DASH_HOLD_SPEED = 1; // 1, 1, 1
-    private static final int NORMAL_DASH_CONTACT_RANGE = 1; // 1, 1, 1
-    private static final float NORMAL_DASH_RECOVER_SLOWDOWN = 0.6F; // 0.6, 0.6, 0.6
-    private static final int NORMAL_DASH_TRAIL_INTERVAL = 2; // 2, 2, 2
-    private static final int NORMAL_DASH_HALBERD_WARMUP = 0; // 0, 0, 0
-    private static final int NORMAL_DASH_PARTICLE_COUNT = 1; // 1, 1, 1
-    private static final int NORMAL_ATTACK_LOOK_LIMIT = 30; // 30, 30, 30
-    private static final int NORMAL_PROJECTILE_HEIGHT = 1; // 1, 1, 1
-    private static final int HOWITZER_ATTACK_PREPARE_TIME = 40; // 60, 40, 10
-    private static final float HOWITZER_ATTACK_SPEED = 1.5F; // 1, 1.5, 2
-    private static final float HOWITZER_ATTACK_INACCURACY = 0.0F; // 0, 0, 0
-    private static final int PHASE_THREE_PREPARE_TIME = 40; // 60, 40, 20
-    private static final int PHASE_FOUR_PHANTOM_ARROW_WAVES = 4; // 3, 4, 4
-    private static final int PHASE_FOUR_PHANTOM_ARROW_ARROWS_PER_GROUP = 36; // 24, 36, 54
-    private static final int PHASE_FOUR_PHANTOM_ARROW_WARNING_TIME = 15; // 20, 15, 15
-    private static final int PHASE_FOUR_PHANTOM_ARROW_FIRST_GROUP_DELAY = 12; // 18, 12, 6
-    private static final int PHASE_FOUR_PHANTOM_ARROW_GROUP_INTERVAL = 6; // 8, 6, 6
-    private static final int PHASE_FOUR_PHANTOM_ARROW_NEXT_WAVE_DELAY = 12; // 18, 12, 6
-    private static final int PHASE_FOUR_PHANTOM_ARROW_WARNING_POINTS = 10; // 10, 10, 10
-    private static final float PHASE_FOUR_PHANTOM_ARROW_WARNING_SPACING = 1.0F; // 1.0, 1.0, 1.0
-    private static final float PHASE_FOUR_PHANTOM_ARROW_SPAWN_RADIUS = 1.5F; // 1.5, 1.5, 1.5
-    private static final float PHASE_FOUR_PHANTOM_ARROW_SPAWN_HEIGHT = 1.0F; // 1.0, 1.0, 1.0
-    private static final float PHASE_FOUR_PHANTOM_ARROW_SPEED = 8.0F; // 8.0, 8.0, 8.0
-    private static final float PHASE_FOUR_PHANTOM_ARROW_DAMAGE = NORMAL_ATTACK_DAMAGE;
-    private static final int PHASE_FOUR_ATTACK_PREPARE_TIME = 40; // 60, 40, 20
-    private static final int PHASE_FOUR_SUPER_WATER_SPEAR_ROUNDS = 8; // 6, 8, 12
-    private static final int PHASE_FOUR_SUPER_WATER_SPEAR_INTERVAL = 20; // 30, 20, 10
-    private static final int FINAL_SPARK_PEPPERMINT_INTERVAL = 45; // 60, 45, 30
-    private static final int FINAL_SPARK_PEPPERMINT_COUNT = 6; // 6, 6, 6
-    private static final float FINAL_SPARK_PEPPERMINT_SPIN_SPEED = 3.0F; // 2.0, 3.0, 4.0
-    private static final float FINAL_SPARK_PEPPERMINT_RADIUS_GROWTH = 0.2F; // 0.15, 0.2, 0.25
-    private static final int FINAL_SPARK_FIRST_LASER_WAIT_TIME = 40; // 60, 40, 20
-    private static final int FINAL_SPARK_FIRST_LASER_TURN_TIME = 200; // 200, 200, 200
-    private static final float FINAL_SPARK_FIRST_LASER_TURN_DEGREES_PER_SECOND = 36.0F; // 27, 36, 54
-    private static final int FINAL_SPARK_SECOND_LASER_WAIT_TIME = 40; // 60, 40, 20
-    private static final int FINAL_SPARK_SECOND_LASER_TURN_TIME = 400; // 200, 400, 600
-    private static final float FINAL_SPARK_SECOND_LASER_TURN_DEGREES_PER_SECOND = 54.0F; // 36, 54, 72
-    private static final float FINAL_SPARK_LASER_DAMAGE =GREAT_LASER_DAMAGE;
-    private static final float FINAL_SPARK_LASER_HP_DAMAGE = 0.0F; // 0.0, 0.0, 0.0
-    private static final int FINAL_SPARK_LASER_LIFESPAN_BUFFER = 20; // 20, 20, 20
-    private static final int MUTANT_LEVIATHAN_LASER_PORTAL_LIFESPAN_BUFFER = 40; // 40, 40, 40
+    private float LASER_SPREAD_INITIAL_SPEED = 0.01F;
+    private float LASER_SPREAD_DAMAGE = NORMAL_ATTACK_DAMAGE;
+    private int LASER_MISSILE_MISSILE_BURSTS = 8;
+    private int LASER_MISSILE_MISSILE_INTERVAL = 5;
+    private int LASER_MISSILE_REST_TIME = 60;
+    private float LASER_MISSILE_MISSILE_SIDE_ANGLE = 45.0F;
+    private int LASER_MISSILE_MISSILE_SIDE = 1;
+    private float LASER_MISSILE_ANGLE_RANDOMNESS = 3.0F;
+    private float LASER_MISSILE_ORIGIN_HEIGHT = 1.5F;
+    private float LASER_MISSILE_MISSILE_DAMAGE = NORMAL_ATTACK_DAMAGE; // 1.5, 1.5, 1.5
+    private float LASER_MISSILE_MISSILE_SPEED = 1.0F;
+    private int LASER_MISSILE_MISSILE_LAUNCH_TIME = 10;
+    private int HALBERD_ATTACK_ROUNDS = 3;
+    private int HALBERD_MARK_TIME = 20;
+    private int HALBERD_REST_TIME = 20;
+    private float HALBERD_MARK_RADIUS = 3.0F;
+    private int HALBERD_MARK_PARTICLE_COUNT = 8;
+    private float HALBERD_MOVE_SPEED = 3.0F;
+    private float HALBERD_SMASH_HEIGHT = 10.0F;
+    private float HALBERD_SMASH_SPEED = 6.0F;
+    private float HALBERD_SMASH_DAMAGE = NORMAL_ATTACK_DAMAGE*2;
+    private float HALBERD_SMASH_HITBOX_RADIUS = 4.0F;
+    private int HALBERD_SPIRAL_ARMS = 8;
+    private int HALBERD_SPIRAL_PER_ARM = 18;
+    private float HALBERD_SPIRAL_RADIUS = 108.0F;
+    private int HALBERD_SPIRAL_WARMUP = 0;
+    private float HALBERD_SPIRAL_DAMAGE = NORMAL_ATTACK_DAMAGE;
+    private float HALBERD_ARENA_EDGE_PADDING = 4.0F;
+    private float HALBERD_MIN_MARK_ANGLE_DIFFERENCE = 120.0F;
+    private int VOID_RUNE_ATTACK_PREPARE_TIME = 40;
+    private int VOID_RUNE_ATTACK_ROUNDS = 60;
+    private int VOID_RUNE_ATTACK_INTERVAL = 2;
+    private int VOID_RUNE_LINE_LENGTH = RESTRICTION_BOUNDARY_RADIUS;
+    private int VOID_RUNE_ROTATION_PERIOD = 23;
+    private int VOID_RUNE_WARMUP = 0;
+    private float VOID_RUNE_DAMAGE = NORMAL_ATTACK_DAMAGE;
+    private int ABYSSAL_MINE_COUNT = 40;
+    private float ABYSSAL_MINE_ARENA_PADDING = 2.0F;
+    private int ABYSSAL_MINE_WARMUP = 0;
+    private float ABYSSAL_INITIAL_ANGLE_DEGREES = 30.0F;
+    private int ABYSSAL_PREDICTION_TIME = 40;
+    private int ABYSSAL_PREDICTION_PARTICLES = 30;
+    private float ABYSSAL_PREDICTION_PARTICLE_SPACING = 1.0F;
+    private float ABYSSAL_PREDICTION_WALL_HEIGHT = 5.0F;
+    private float ABYSSAL_PREDICTION_WALL_VERTICAL_SPACING = 1.0F;
+    private int ABYSSAL_PREDICTION_WALL_REFRESH_INTERVAL = 2;
+    private int ABYSSAL_LASER_ROTATION_TIME = 200;
+    private float ABYSSAL_LASER_TURN_DEGREES_PER_SECOND = 54.0F;
+    private float ABYSSAL_LASER_TURN_DEGREES_PER_TICK = ABYSSAL_LASER_TURN_DEGREES_PER_SECOND / 20.0F;
+    private float ABYSSAL_LASER_DAMAGE = GREAT_LASER_DAMAGE; // 66, 132, 198
+    private float ABYSSAL_LASER_HP_DAMAGE = 0.0F;
+    private int FLARE_ATTACK_BOMBS = 12;
+    private int FLARE_ATTACK_INTERVAL = 20;
+    private float FLARE_STRAFE_RADIUS = 12.0F;
+    private float FLARE_STRAFE_ANGULAR_SPEED = 0.08F;
+    private float FLARE_STRAFE_MOVE_SPEED = 1.0F;
+    private float FLARE_BOMB_SPEED = 1.25F;
+    private float FLARE_BOMB_INACCURACY = 0.0F;
+    public int FLARE_BOMB_JET_DIRECTIONS = 6;
+    public int FLARE_BOMB_JETS_PER_DIRECTION = 12;
+    public float FLARE_BOMB_JET_SPACING = 1.0F;
+    public int FLARE_BOMB_JET_DELAY_PER_BLOCK = 2;
+    public float FLARE_BOMB_JET_DAMAGE = NORMAL_ATTACK_DAMAGE;
+    private int IGNIS_WAVE_INTERVAL = 40;
+    private int IGNIS_FALLING_BLOCK_DURATION = 10;
+    private float IGNIS_FALLING_BLOCK_UPWARD_SPEED = 0.2F;
+    private float IGNIS_FALLING_BLOCK_UPWARD_VARIANCE = 0.15F;
+    private float IGNIS_FALLING_BLOCK_DAMAGE = NORMAL_ATTACK_DAMAGE;
+    private int IGNIS_FLAME_STRIKE_DURATION = 60;
+    private int IGNIS_FLAME_STRIKE_WAIT_TIME = 0;
+    private int IGNIS_FLAME_STRIKE_DELAY = 0;
+    private float IGNIS_FLAME_STRIKE_RADIUS = 3.0F;
+    private float IGNIS_FLAME_STRIKE_DAMAGE = NORMAL_ATTACK_DAMAGE;
+    private float IGNIS_FLAME_STRIKE_HP_DAMAGE = 0.0F;
+    private int SANDSTORM_ATTACK_DURATION = 240;
+    private int SANDSTORM_COUNT = 3;
+    private float SANDSTORM_RADIUS = 8.0F;
+    private float SANDSTORM_ORBIT_SPEED = 0.04F;
+    private int SANDSTORM_VOID_VORTEX_COUNT = 8;
+    private float SANDSTORM_VOID_VORTEX_RADIUS = RESTRICTION_BOUNDARY_RADIUS * 0.75F;
+    private float SANDSTORM_FOLLOW_SPEED = 1.0F;
+    private float SANDSTORM_CONTACT_DAMAGE = NORMAL_ATTACK_DAMAGE;
+    private int NORMAL_SHOOTING_INTERVAL = 2;
+    private int NORMAL_SHOOTING_PREPARE_TIME = 40;
+    private int NORMAL_SHOOTING_MIN_SHOTS = 30;
+    private int NORMAL_SHOOTING_MAX_SHOTS = 40;
+    private float NORMAL_SHOOTING_LASER_INITIAL_SPEED = 0.2F;
+    private int NORMAL_DASH_COUNT = 3;
+    private int NORMAL_DASH_WINDUP = 10;
+    private int NORMAL_DASH_DURATION = 10;
+    private int NORMAL_DASH_RECOVER = 10;
+    private float NORMAL_DASH_SPEED = 2F;
+    private int NORMAL_DASH_HOLD_SPEED = 1;
+    private int NORMAL_DASH_CONTACT_RANGE = 1;
+    private float NORMAL_DASH_RECOVER_SLOWDOWN = 0.6F;
+    private int NORMAL_DASH_TRAIL_INTERVAL = 2;
+    private int NORMAL_DASH_HALBERD_WARMUP = 0;
+    private int NORMAL_DASH_PARTICLE_COUNT = 1;
+    private int NORMAL_ATTACK_LOOK_LIMIT = 30;
+    private int NORMAL_PROJECTILE_HEIGHT = 1;
+    private int HOWITZER_ATTACK_PREPARE_TIME = 40;
+    private float HOWITZER_ATTACK_SPEED = 1.5F;
+    private float HOWITZER_ATTACK_INACCURACY = 0.0F;
+    private int PHASE_THREE_PREPARE_TIME = 40;
+    private int PHASE_FOUR_PHANTOM_ARROW_WAVES = 4;
+    private int PHASE_FOUR_PHANTOM_ARROW_ARROWS_PER_GROUP = 36;
+    private int PHASE_FOUR_PHANTOM_ARROW_WARNING_TIME = 15;
+    private int PHASE_FOUR_PHANTOM_ARROW_FIRST_GROUP_DELAY = 12;
+    private int PHASE_FOUR_PHANTOM_ARROW_GROUP_INTERVAL = 6;
+    private int PHASE_FOUR_PHANTOM_ARROW_NEXT_WAVE_DELAY = 12;
+    private int PHASE_FOUR_PHANTOM_ARROW_WARNING_POINTS = 10;
+    private float PHASE_FOUR_PHANTOM_ARROW_WARNING_SPACING = 1.0F;
+    private float PHASE_FOUR_PHANTOM_ARROW_SPAWN_RADIUS = 1.5F;
+    private float PHASE_FOUR_PHANTOM_ARROW_SPAWN_HEIGHT = 1.0F;
+    private float PHASE_FOUR_PHANTOM_ARROW_SPEED = 8.0F;
+    private float PHASE_FOUR_PHANTOM_ARROW_DAMAGE = NORMAL_ATTACK_DAMAGE;
+    private int PHASE_FOUR_ATTACK_PREPARE_TIME = 40;
+    private int PHASE_FOUR_SUPER_WATER_SPEAR_ROUNDS = 8;
+    private int PHASE_FOUR_SUPER_WATER_SPEAR_INTERVAL = 20;
+    private int FINAL_SPARK_PEPPERMINT_INTERVAL = 45;
+    private int FINAL_SPARK_PEPPERMINT_COUNT = 6;
+    private float FINAL_SPARK_PEPPERMINT_SPIN_SPEED = 3.0F;
+    private float FINAL_SPARK_PEPPERMINT_RADIUS_GROWTH = 0.2F;
+    private int FINAL_SPARK_FIRST_LASER_WAIT_TIME = 40;
+    private int FINAL_SPARK_FIRST_LASER_TURN_TIME = 200;
+    private float FINAL_SPARK_FIRST_LASER_TURN_DEGREES_PER_SECOND = 36.0F;
+    private int FINAL_SPARK_SECOND_LASER_WAIT_TIME = 40;
+    private int FINAL_SPARK_SECOND_LASER_TURN_TIME = 400;
+    private float FINAL_SPARK_SECOND_LASER_TURN_DEGREES_PER_SECOND = 54.0F;
+    private float FINAL_SPARK_LASER_DAMAGE =GREAT_LASER_DAMAGE;
+    private float FINAL_SPARK_LASER_HP_DAMAGE = 0.0F;
+    private int FINAL_SPARK_LASER_LIFESPAN_BUFFER = 20;
+    private int MUTANT_LEVIATHAN_LASER_PORTAL_LIFESPAN_BUFFER = 40;
+
+    // End of settings.
 
 
     // Mutable variables. DO NOT change this.
@@ -360,9 +368,13 @@ public class MutantEntity extends BossEntity {
     private boolean restrictionBoundaryCreated;
     private boolean waterArenaDetachedForPeppermint;
     private Vec3 waterArenaCenter = Vec3.ZERO;
+    private boolean waitingForFinalHit;
+    private int finalHitLandingState;
+    private double finalHitGroundY;
 
     public MutantEntity(EntityType<? extends MutantEntity> type, Level level) {
         super(type, level);
+        BossBarUtil.useNotchedTwelve(this);
         moveControl = new VexMovementController(this);
         xpReward = 50;
     }
@@ -371,10 +383,297 @@ public class MutantEntity extends BossEntity {
     protected void defineSynchedData() {
         super.defineSynchedData();
         entityData.define(MUSIC_PHASE, PHASE_1 + 1);
+        entityData.define(BOSS_DIFFICULTY, 0);
+        entityData.define(POWERED, false);
+    }
+
+    public void setBossDifficulty(int difficulty) {
+        entityData.set(BOSS_DIFFICULTY, Mth.clamp(difficulty, 0, 2));
+        applyDifficultySettings();
+        applyDifficultyHealth(false);
+    }
+
+    public int getBossDifficulty() {
+        return entityData.get(BOSS_DIFFICULTY);
+    }
+
+    @Override
+    public boolean isPowered() {
+        return entityData.get(POWERED);
+    }
+
+    public void setPowered(boolean powered) {
+        entityData.set(POWERED, powered);
+        if (powered) {
+            setInvulnerable(true);
+        }
     }
 
     public int getMusicPhase() {
         return entityData.get(MUSIC_PHASE);
+    }
+    private int configInt(String key) {
+        return Config.mutantInt(key, getBossDifficulty());
+    }
+
+    private float configFloat(String key) {
+        return (float) Config.mutantDouble(key, getBossDifficulty());
+    }
+
+    private void applyDifficultySettings() {
+        HP = configInt("HP");
+        NORMAL_ATTACK_DAMAGE = configInt("NORMAL_ATTACK_DAMAGE");
+        RESTRICTION_BOUNDARY_DAMAGE = configInt("RESTRICTION_BOUNDARY_DAMAGE");
+        GREAT_LASER_DAMAGE = configFloat("GREAT_LASER_DAMAGE");
+        TRANSITION_TIME = configInt("TRANSITION_TIME");
+        RESTRICTION_BOUNDARY_SHIELDS = configInt("RESTRICTION_BOUNDARY_SHIELDS");
+        RESTRICTION_BOUNDARY_RADIUS = configInt("RESTRICTION_BOUNDARY_RADIUS");
+        RESTRICTION_BOUNDARY_ORBIT_TICKS = configInt("RESTRICTION_BOUNDARY_ORBIT_TICKS");
+        MAGNETIC_ATTACK_DURATION = configInt("MAGNETIC_ATTACK_DURATION");
+        MAGNETIC_ATTACK_PREPARE_TIME = configInt("MAGNETIC_ATTACK_PREPARE_TIME");
+        MAGNETIC_WEAPON_HEIGHT = configInt("MAGNETIC_WEAPON_HEIGHT");
+        MAGNETIC_WEAPON_CHASE_SPEED = configFloat("MAGNETIC_WEAPON_CHASE_SPEED");
+        MAGNETIC_WEAPON_HIT_DISTANCE = configFloat("MAGNETIC_WEAPON_HIT_DISTANCE");
+        MAGNETIC_WEAPON_HIT_COOLDOWN = configInt("MAGNETIC_WEAPON_HIT_COOLDOWN");
+        MAGNETIC_WEAPON_RANGE_PARTICLE_INTERVAL = configInt("MAGNETIC_WEAPON_RANGE_PARTICLE_INTERVAL");
+        MAGNETIC_WEAPON_RANGE_PARTICLE_POINTS = configInt("MAGNETIC_WEAPON_RANGE_PARTICLE_POINTS");
+        MAGNETIC_WEAPON_RANGE_PARTICLE_HEIGHT = configFloat("MAGNETIC_WEAPON_RANGE_PARTICLE_HEIGHT");
+        WATER_BOLT_ATTACK_POSITIONS = configInt("WATER_BOLT_ATTACK_POSITIONS");
+        WATER_BOLT_DISTANCE = configInt("WATER_BOLT_DISTANCE");
+        WATER_BOLT_Y_OFFSET = configInt("WATER_BOLT_Y_OFFSET");
+        WATER_BOLT_VOLLEYS_PER_POSITION = configInt("WATER_BOLT_VOLLEYS_PER_POSITION");
+        WATER_BOLT_BOLTS_PER_VOLLEY = configInt("WATER_BOLT_BOLTS_PER_VOLLEY");
+        WATER_BOLT_PREPARE_TIME = configInt("WATER_BOLT_PREPARE_TIME");
+        WATER_BOLT_VOLLEY_INTERVAL = configInt("WATER_BOLT_VOLLEY_INTERVAL");
+        WATER_BOLT_SPREAD_DEGREES = configInt("WATER_BOLT_SPREAD_DEGREES");
+        WATER_BOLT_SPEED = configFloat("WATER_BOLT_SPEED");
+        WATER_BOLT_INACCURACY = configInt("WATER_BOLT_INACCURACY");
+        PEPPERMINT_ATTACK_DURATION = configInt("PEPPERMINT_ATTACK_DURATION");
+        PEPPERMINT_ATTACK_PREPARE_TIME = configInt("PEPPERMINT_ATTACK_PREPARE_TIME");
+        PEPPERMINT_SMALL_RING_COUNT = configInt("PEPPERMINT_SMALL_RING_COUNT");
+        PEPPERMINT_SMALL_RING_RADIUS = configFloat("PEPPERMINT_SMALL_RING_RADIUS");
+        PEPPERMINT_LARGE_RING_COUNT = configInt("PEPPERMINT_LARGE_RING_COUNT");
+        PEPPERMINT_LARGE_RING_RADIUS = configFloat("PEPPERMINT_LARGE_RING_RADIUS");
+        PEPPERMINT_SPIN_SPEED = configFloat("PEPPERMINT_SPIN_SPEED");
+        PEPPERMINT_STRAIGHT_INTERVAL = configInt("PEPPERMINT_STRAIGHT_INTERVAL");
+        PEPPERMINT_STRAIGHT_COUNT = configInt("PEPPERMINT_STRAIGHT_COUNT");
+        PEPPERMINT_STRAIGHT_SPREAD_DEGREES = configInt("PEPPERMINT_STRAIGHT_SPREAD_DEGREES");
+        PEPPERMINT_HIT_RANGE = configFloat("PEPPERMINT_HIT_RANGE");
+        PEPPERMINT_FOLLOW_SPEED = configFloat("PEPPERMINT_FOLLOW_SPEED");
+        DINOSAUR_ATTACK_PREPARE_TIME = configInt("DINOSAUR_ATTACK_PREPARE_TIME");
+        DINOSAUR_DASH_COUNT = configInt("DINOSAUR_DASH_COUNT");
+        DINOSAUR_DASH_DURATION = configInt("DINOSAUR_DASH_DURATION");
+        DINOSAUR_DASH_RECOVER_TIME = configInt("DINOSAUR_DASH_RECOVER_TIME");
+        DINOSAUR_DASH_SPEED = configFloat("DINOSAUR_DASH_SPEED");
+        DINOSAUR_DASH_CONTACT_RANGE = configFloat("DINOSAUR_DASH_CONTACT_RANGE");
+        DINOSAUR_DASH_TRAIL_PARTICLES = configInt("DINOSAUR_DASH_TRAIL_PARTICLES");
+        DINOSAUR_TOSS_HEIGHT = configFloat("DINOSAUR_TOSS_HEIGHT");
+        DINOSAUR_TOSS_DISTANCE = configFloat("DINOSAUR_TOSS_DISTANCE");
+        DINOSAUR_TOSS_MOVE_SPEED = configFloat("DINOSAUR_TOSS_MOVE_SPEED");
+        DINOSAUR_TOSS_POSITION_TOLERANCE = configFloat("DINOSAUR_TOSS_POSITION_TOLERANCE");
+        DINOSAUR_SPEAR_SPEED = configFloat("DINOSAUR_SPEAR_SPEED");
+        DINOSAUR_SPEAR_WINDUP_TIME = configInt("DINOSAUR_SPEAR_WINDUP_TIME");
+        DINOSAUR_SPEAR_MAX_FLIGHT_TIME = configInt("DINOSAUR_SPEAR_MAX_FLIGHT_TIME");
+        DINOSAUR_RETURN_SPEED = configFloat("DINOSAUR_RETURN_SPEED");
+        ARROW_ATTACK_DRUM_ROUNDS = configInt("ARROW_ATTACK_DRUM_ROUNDS");
+        ARROW_ATTACK_PREPARE_TIME = configInt("ARROW_ATTACK_PREPARE_TIME");
+        ARROW_ATTACK_DRUM_INTERVAL = configInt("ARROW_ATTACK_DRUM_INTERVAL");
+        ARROW_ATTACK_DRUM_COUNT = configInt("ARROW_ATTACK_DRUM_COUNT");
+        ARROW_ATTACK_DRUM_THROW_SPEED = configFloat("ARROW_ATTACK_DRUM_THROW_SPEED");
+        ARROW_ATTACK_DRUM_THROW_HEIGHT = configFloat("ARROW_ATTACK_DRUM_THROW_HEIGHT");
+        ARROW_ATTACK_RAIN_INTERVAL = configInt("ARROW_ATTACK_RAIN_INTERVAL");
+        ARROW_ATTACK_RAIN_COUNT = configInt("ARROW_ATTACK_RAIN_COUNT");
+        ARROW_ATTACK_RAIN_MAX_HEIGHT = configInt("ARROW_ATTACK_RAIN_MAX_HEIGHT");
+        ARROW_ATTACK_RAIN_HORIZONTAL_SPREAD = configFloat("ARROW_ATTACK_RAIN_HORIZONTAL_SPREAD");
+        ARROW_ATTACK_RAIN_VERTICAL_SPREAD = configFloat("ARROW_ATTACK_RAIN_VERTICAL_SPREAD");
+        ARROW_ATTACK_RAIN_MIN_SPEED = configFloat("ARROW_ATTACK_RAIN_MIN_SPEED");
+        ARROW_ATTACK_RAIN_SPEED_VARIANCE = configFloat("ARROW_ATTACK_RAIN_SPEED_VARIANCE");
+        ARROW_ATTACK_RAIN_INACCURACY = configFloat("ARROW_ATTACK_RAIN_INACCURACY");
+        ARROW_ATTACK_DIFFICULTY_TWO_REST_TIME = configInt("ARROW_ATTACK_DIFFICULTY_TWO_REST_TIME");
+        WATER_SPEAR_CENTER_WAVES = configInt("WATER_SPEAR_CENTER_WAVES");
+        WATER_SPEAR_CENTER_SPEARS_PER_WAVE = configInt("WATER_SPEAR_CENTER_SPEARS_PER_WAVE");
+        WATER_SPEAR_CENTER_INTERVAL = configInt("WATER_SPEAR_CENTER_INTERVAL");
+        WATER_SPEAR_CENTER_RANGE = configInt("WATER_SPEAR_CENTER_RANGE");
+        WATER_SPEAR_CENTER_ACCELERATION = configFloat("WATER_SPEAR_CENTER_ACCELERATION");
+        WATER_SPEAR_PARALLEL_WAVES = configInt("WATER_SPEAR_PARALLEL_WAVES");
+        WATER_SPEAR_PARALLEL_SPEARS_PER_WAVE = configInt("WATER_SPEAR_PARALLEL_SPEARS_PER_WAVE");
+        WATER_SPEAR_PARALLEL_INTERVAL = configInt("WATER_SPEAR_PARALLEL_INTERVAL");
+        WATER_SPEAR_PARALLEL_RANGE = configInt("WATER_SPEAR_PARALLEL_RANGE");
+        WATER_SPEAR_PARALLEL_SPACING = configFloat("WATER_SPEAR_PARALLEL_SPACING");
+        WATER_SPEAR_PARALLEL_MIN_ANGLE_DEGREES = configFloat("WATER_SPEAR_PARALLEL_MIN_ANGLE_DEGREES");
+        WATER_SPEAR_PARALLEL_ACCELERATION = configFloat("WATER_SPEAR_PARALLEL_ACCELERATION");
+        WATER_SPEAR_PARALLEL_PREDICTION_INTERVAL = configInt("WATER_SPEAR_PARALLEL_PREDICTION_INTERVAL");
+        WATER_SPEAR_PARALLEL_PREDICTION_POINTS = configInt("WATER_SPEAR_PARALLEL_PREDICTION_POINTS");
+        WATER_SPEAR_PARALLEL_PREDICTION_LENGTH = configInt("WATER_SPEAR_PARALLEL_PREDICTION_LENGTH");
+        LASER_SPREAD_BURSTS = configInt("LASER_SPREAD_BURSTS");
+        LASER_SPREAD_ARMS = configInt("LASER_SPREAD_ARMS");
+        LASER_SPREAD_INTERVAL = configInt("LASER_SPREAD_INTERVAL");
+        LASER_SPREAD_ORIGIN_HEIGHT = configFloat("LASER_SPREAD_ORIGIN_HEIGHT");
+        LASER_SPREAD_INITIAL_SPEED = configFloat("LASER_SPREAD_INITIAL_SPEED");
+        LASER_MISSILE_MISSILE_BURSTS = configInt("LASER_MISSILE_MISSILE_BURSTS");
+        LASER_MISSILE_MISSILE_INTERVAL = configInt("LASER_MISSILE_MISSILE_INTERVAL");
+        LASER_MISSILE_REST_TIME = configInt("LASER_MISSILE_REST_TIME");
+        LASER_MISSILE_MISSILE_SIDE_ANGLE = configFloat("LASER_MISSILE_MISSILE_SIDE_ANGLE");
+        LASER_MISSILE_MISSILE_SIDE = configInt("LASER_MISSILE_MISSILE_SIDE");
+        LASER_MISSILE_ANGLE_RANDOMNESS = configFloat("LASER_MISSILE_ANGLE_RANDOMNESS");
+        LASER_MISSILE_ORIGIN_HEIGHT = configFloat("LASER_MISSILE_ORIGIN_HEIGHT");
+        LASER_MISSILE_MISSILE_DAMAGE = configFloat("LASER_MISSILE_MISSILE_DAMAGE");
+        LASER_MISSILE_MISSILE_SPEED = configFloat("LASER_MISSILE_MISSILE_SPEED");
+        LASER_MISSILE_MISSILE_LAUNCH_TIME = configInt("LASER_MISSILE_MISSILE_LAUNCH_TIME");
+        HALBERD_ATTACK_ROUNDS = configInt("HALBERD_ATTACK_ROUNDS");
+        HALBERD_MARK_TIME = configInt("HALBERD_MARK_TIME");
+        HALBERD_REST_TIME = configInt("HALBERD_REST_TIME");
+        HALBERD_MARK_RADIUS = configFloat("HALBERD_MARK_RADIUS");
+        HALBERD_MARK_PARTICLE_COUNT = configInt("HALBERD_MARK_PARTICLE_COUNT");
+        HALBERD_MOVE_SPEED = configFloat("HALBERD_MOVE_SPEED");
+        HALBERD_SMASH_HEIGHT = configFloat("HALBERD_SMASH_HEIGHT");
+        HALBERD_SMASH_SPEED = configFloat("HALBERD_SMASH_SPEED");
+        HALBERD_SMASH_HITBOX_RADIUS = configFloat("HALBERD_SMASH_HITBOX_RADIUS");
+        HALBERD_SPIRAL_ARMS = configInt("HALBERD_SPIRAL_ARMS");
+        HALBERD_SPIRAL_PER_ARM = configInt("HALBERD_SPIRAL_PER_ARM");
+        HALBERD_SPIRAL_RADIUS = configFloat("HALBERD_SPIRAL_RADIUS");
+        HALBERD_SPIRAL_WARMUP = configInt("HALBERD_SPIRAL_WARMUP");
+        HALBERD_ARENA_EDGE_PADDING = configFloat("HALBERD_ARENA_EDGE_PADDING");
+        HALBERD_MIN_MARK_ANGLE_DIFFERENCE = configFloat("HALBERD_MIN_MARK_ANGLE_DIFFERENCE");
+        VOID_RUNE_ATTACK_PREPARE_TIME = configInt("VOID_RUNE_ATTACK_PREPARE_TIME");
+        VOID_RUNE_ATTACK_ROUNDS = configInt("VOID_RUNE_ATTACK_ROUNDS");
+        VOID_RUNE_ATTACK_INTERVAL = configInt("VOID_RUNE_ATTACK_INTERVAL");
+        VOID_RUNE_ROTATION_PERIOD = configInt("VOID_RUNE_ROTATION_PERIOD");
+        VOID_RUNE_WARMUP = configInt("VOID_RUNE_WARMUP");
+        ABYSSAL_MINE_COUNT = configInt("ABYSSAL_MINE_COUNT");
+        ABYSSAL_MINE_ARENA_PADDING = configFloat("ABYSSAL_MINE_ARENA_PADDING");
+        ABYSSAL_MINE_WARMUP = configInt("ABYSSAL_MINE_WARMUP");
+        ABYSSAL_INITIAL_ANGLE_DEGREES = configFloat("ABYSSAL_INITIAL_ANGLE_DEGREES");
+        ABYSSAL_PREDICTION_TIME = configInt("ABYSSAL_PREDICTION_TIME");
+        ABYSSAL_PREDICTION_PARTICLES = configInt("ABYSSAL_PREDICTION_PARTICLES");
+        ABYSSAL_PREDICTION_PARTICLE_SPACING = configFloat("ABYSSAL_PREDICTION_PARTICLE_SPACING");
+        ABYSSAL_PREDICTION_WALL_HEIGHT = configFloat("ABYSSAL_PREDICTION_WALL_HEIGHT");
+        ABYSSAL_PREDICTION_WALL_VERTICAL_SPACING = configFloat("ABYSSAL_PREDICTION_WALL_VERTICAL_SPACING");
+        ABYSSAL_PREDICTION_WALL_REFRESH_INTERVAL = configInt("ABYSSAL_PREDICTION_WALL_REFRESH_INTERVAL");
+        ABYSSAL_LASER_ROTATION_TIME = configInt("ABYSSAL_LASER_ROTATION_TIME");
+        ABYSSAL_LASER_TURN_DEGREES_PER_SECOND = configFloat("ABYSSAL_LASER_TURN_DEGREES_PER_SECOND");
+        ABYSSAL_LASER_DAMAGE = configFloat("ABYSSAL_LASER_DAMAGE");
+        ABYSSAL_LASER_HP_DAMAGE = configFloat("ABYSSAL_LASER_HP_DAMAGE");
+        FLARE_ATTACK_BOMBS = configInt("FLARE_ATTACK_BOMBS");
+        FLARE_ATTACK_INTERVAL = configInt("FLARE_ATTACK_INTERVAL");
+        FLARE_STRAFE_RADIUS = configFloat("FLARE_STRAFE_RADIUS");
+        FLARE_STRAFE_ANGULAR_SPEED = configFloat("FLARE_STRAFE_ANGULAR_SPEED");
+        FLARE_STRAFE_MOVE_SPEED = configFloat("FLARE_STRAFE_MOVE_SPEED");
+        FLARE_BOMB_SPEED = configFloat("FLARE_BOMB_SPEED");
+        FLARE_BOMB_INACCURACY = configFloat("FLARE_BOMB_INACCURACY");
+        FLARE_BOMB_JET_DIRECTIONS = configInt("FLARE_BOMB_JET_DIRECTIONS");
+        FLARE_BOMB_JETS_PER_DIRECTION = configInt("FLARE_BOMB_JETS_PER_DIRECTION");
+        FLARE_BOMB_JET_SPACING = configFloat("FLARE_BOMB_JET_SPACING");
+        FLARE_BOMB_JET_DELAY_PER_BLOCK = configInt("FLARE_BOMB_JET_DELAY_PER_BLOCK");
+        IGNIS_WAVE_INTERVAL = configInt("IGNIS_WAVE_INTERVAL");
+        IGNIS_FALLING_BLOCK_DURATION = configInt("IGNIS_FALLING_BLOCK_DURATION");
+        IGNIS_FALLING_BLOCK_UPWARD_SPEED = configFloat("IGNIS_FALLING_BLOCK_UPWARD_SPEED");
+        IGNIS_FALLING_BLOCK_UPWARD_VARIANCE = configFloat("IGNIS_FALLING_BLOCK_UPWARD_VARIANCE");
+        IGNIS_FLAME_STRIKE_DURATION = configInt("IGNIS_FLAME_STRIKE_DURATION");
+        IGNIS_FLAME_STRIKE_WAIT_TIME = configInt("IGNIS_FLAME_STRIKE_WAIT_TIME");
+        IGNIS_FLAME_STRIKE_DELAY = configInt("IGNIS_FLAME_STRIKE_DELAY");
+        IGNIS_FLAME_STRIKE_RADIUS = configFloat("IGNIS_FLAME_STRIKE_RADIUS");
+        IGNIS_FLAME_STRIKE_HP_DAMAGE = configFloat("IGNIS_FLAME_STRIKE_HP_DAMAGE");
+        SANDSTORM_ATTACK_DURATION = configInt("SANDSTORM_ATTACK_DURATION");
+        SANDSTORM_COUNT = configInt("SANDSTORM_COUNT");
+        SANDSTORM_RADIUS = configFloat("SANDSTORM_RADIUS");
+        SANDSTORM_ORBIT_SPEED = configFloat("SANDSTORM_ORBIT_SPEED");
+        SANDSTORM_VOID_VORTEX_COUNT = configInt("SANDSTORM_VOID_VORTEX_COUNT");
+        SANDSTORM_FOLLOW_SPEED = configFloat("SANDSTORM_FOLLOW_SPEED");
+        NORMAL_SHOOTING_INTERVAL = configInt("NORMAL_SHOOTING_INTERVAL");
+        NORMAL_SHOOTING_PREPARE_TIME = configInt("NORMAL_SHOOTING_PREPARE_TIME");
+        NORMAL_SHOOTING_MIN_SHOTS = configInt("NORMAL_SHOOTING_MIN_SHOTS");
+        NORMAL_SHOOTING_MAX_SHOTS = configInt("NORMAL_SHOOTING_MAX_SHOTS");
+        NORMAL_SHOOTING_LASER_INITIAL_SPEED = configFloat("NORMAL_SHOOTING_LASER_INITIAL_SPEED");
+        NORMAL_DASH_COUNT = configInt("NORMAL_DASH_COUNT");
+        NORMAL_DASH_WINDUP = configInt("NORMAL_DASH_WINDUP");
+        NORMAL_DASH_DURATION = configInt("NORMAL_DASH_DURATION");
+        NORMAL_DASH_RECOVER = configInt("NORMAL_DASH_RECOVER");
+        NORMAL_DASH_SPEED = configFloat("NORMAL_DASH_SPEED");
+        NORMAL_DASH_HOLD_SPEED = configInt("NORMAL_DASH_HOLD_SPEED");
+        NORMAL_DASH_CONTACT_RANGE = configInt("NORMAL_DASH_CONTACT_RANGE");
+        NORMAL_DASH_RECOVER_SLOWDOWN = configFloat("NORMAL_DASH_RECOVER_SLOWDOWN");
+        NORMAL_DASH_TRAIL_INTERVAL = configInt("NORMAL_DASH_TRAIL_INTERVAL");
+        NORMAL_DASH_HALBERD_WARMUP = configInt("NORMAL_DASH_HALBERD_WARMUP");
+        NORMAL_DASH_PARTICLE_COUNT = configInt("NORMAL_DASH_PARTICLE_COUNT");
+        NORMAL_ATTACK_LOOK_LIMIT = configInt("NORMAL_ATTACK_LOOK_LIMIT");
+        NORMAL_PROJECTILE_HEIGHT = configInt("NORMAL_PROJECTILE_HEIGHT");
+        HOWITZER_ATTACK_PREPARE_TIME = configInt("HOWITZER_ATTACK_PREPARE_TIME");
+        HOWITZER_ATTACK_SPEED = configFloat("HOWITZER_ATTACK_SPEED");
+        HOWITZER_ATTACK_INACCURACY = configFloat("HOWITZER_ATTACK_INACCURACY");
+        PHASE_THREE_PREPARE_TIME = configInt("PHASE_THREE_PREPARE_TIME");
+        PHASE_FOUR_PHANTOM_ARROW_WAVES = configInt("PHASE_FOUR_PHANTOM_ARROW_WAVES");
+        PHASE_FOUR_PHANTOM_ARROW_ARROWS_PER_GROUP = configInt("PHASE_FOUR_PHANTOM_ARROW_ARROWS_PER_GROUP");
+        PHASE_FOUR_PHANTOM_ARROW_WARNING_TIME = configInt("PHASE_FOUR_PHANTOM_ARROW_WARNING_TIME");
+        PHASE_FOUR_PHANTOM_ARROW_FIRST_GROUP_DELAY = configInt("PHASE_FOUR_PHANTOM_ARROW_FIRST_GROUP_DELAY");
+        PHASE_FOUR_PHANTOM_ARROW_GROUP_INTERVAL = configInt("PHASE_FOUR_PHANTOM_ARROW_GROUP_INTERVAL");
+        PHASE_FOUR_PHANTOM_ARROW_NEXT_WAVE_DELAY = configInt("PHASE_FOUR_PHANTOM_ARROW_NEXT_WAVE_DELAY");
+        PHASE_FOUR_PHANTOM_ARROW_WARNING_POINTS = configInt("PHASE_FOUR_PHANTOM_ARROW_WARNING_POINTS");
+        PHASE_FOUR_PHANTOM_ARROW_WARNING_SPACING = configFloat("PHASE_FOUR_PHANTOM_ARROW_WARNING_SPACING");
+        PHASE_FOUR_PHANTOM_ARROW_SPAWN_RADIUS = configFloat("PHASE_FOUR_PHANTOM_ARROW_SPAWN_RADIUS");
+        PHASE_FOUR_PHANTOM_ARROW_SPAWN_HEIGHT = configFloat("PHASE_FOUR_PHANTOM_ARROW_SPAWN_HEIGHT");
+        PHASE_FOUR_PHANTOM_ARROW_SPEED = configFloat("PHASE_FOUR_PHANTOM_ARROW_SPEED");
+        PHASE_FOUR_ATTACK_PREPARE_TIME = configInt("PHASE_FOUR_ATTACK_PREPARE_TIME");
+        PHASE_FOUR_SUPER_WATER_SPEAR_ROUNDS = configInt("PHASE_FOUR_SUPER_WATER_SPEAR_ROUNDS");
+        PHASE_FOUR_SUPER_WATER_SPEAR_INTERVAL = configInt("PHASE_FOUR_SUPER_WATER_SPEAR_INTERVAL");
+        FINAL_SPARK_PEPPERMINT_INTERVAL = configInt("FINAL_SPARK_PEPPERMINT_INTERVAL");
+        FINAL_SPARK_PEPPERMINT_COUNT = configInt("FINAL_SPARK_PEPPERMINT_COUNT");
+        FINAL_SPARK_PEPPERMINT_SPIN_SPEED = configFloat("FINAL_SPARK_PEPPERMINT_SPIN_SPEED");
+        FINAL_SPARK_PEPPERMINT_RADIUS_GROWTH = configFloat("FINAL_SPARK_PEPPERMINT_RADIUS_GROWTH");
+        FINAL_SPARK_FIRST_LASER_WAIT_TIME = configInt("FINAL_SPARK_FIRST_LASER_WAIT_TIME");
+        FINAL_SPARK_FIRST_LASER_TURN_TIME = configInt("FINAL_SPARK_FIRST_LASER_TURN_TIME");
+        FINAL_SPARK_FIRST_LASER_TURN_DEGREES_PER_SECOND = configFloat("FINAL_SPARK_FIRST_LASER_TURN_DEGREES_PER_SECOND");
+        FINAL_SPARK_SECOND_LASER_WAIT_TIME = configInt("FINAL_SPARK_SECOND_LASER_WAIT_TIME");
+        FINAL_SPARK_SECOND_LASER_TURN_TIME = configInt("FINAL_SPARK_SECOND_LASER_TURN_TIME");
+        FINAL_SPARK_SECOND_LASER_TURN_DEGREES_PER_SECOND = configFloat("FINAL_SPARK_SECOND_LASER_TURN_DEGREES_PER_SECOND");
+        FINAL_SPARK_LASER_HP_DAMAGE = configFloat("FINAL_SPARK_LASER_HP_DAMAGE");
+        FINAL_SPARK_LASER_LIFESPAN_BUFFER = configInt("FINAL_SPARK_LASER_LIFESPAN_BUFFER");
+        MUTANT_LEVIATHAN_LASER_PORTAL_LIFESPAN_BUFFER = configInt("MUTANT_LEVIATHAN_LASER_PORTAL_LIFESPAN_BUFFER");
+        MAGNETIC_ATTACK_DAMAGE = NORMAL_ATTACK_DAMAGE;
+        PEPPERMINT_DAMAGE = NORMAL_ATTACK_DAMAGE;
+        ARROW_ATTACK_RAIN_DAMAGE = NORMAL_ATTACK_DAMAGE;
+        WATER_SPEAR_CENTER_DAMAGE = NORMAL_ATTACK_DAMAGE;
+        WATER_SPEAR_PARALLEL_DAMAGE = NORMAL_ATTACK_DAMAGE;
+        LASER_SPREAD_DAMAGE = NORMAL_ATTACK_DAMAGE;
+        HALBERD_SMASH_DAMAGE = NORMAL_ATTACK_DAMAGE * 2.0F;
+        HALBERD_SPIRAL_DAMAGE = NORMAL_ATTACK_DAMAGE;
+        VOID_RUNE_LINE_LENGTH = RESTRICTION_BOUNDARY_RADIUS;
+        VOID_RUNE_DAMAGE = NORMAL_ATTACK_DAMAGE;
+        ABYSSAL_LASER_TURN_DEGREES_PER_TICK = ABYSSAL_LASER_TURN_DEGREES_PER_SECOND / 20.0F;
+        FLARE_BOMB_JET_DAMAGE = NORMAL_ATTACK_DAMAGE;
+        IGNIS_FALLING_BLOCK_DAMAGE = NORMAL_ATTACK_DAMAGE;
+        IGNIS_FLAME_STRIKE_DAMAGE = NORMAL_ATTACK_DAMAGE;
+        SANDSTORM_VOID_VORTEX_RADIUS = RESTRICTION_BOUNDARY_RADIUS * 0.75F;
+        SANDSTORM_CONTACT_DAMAGE = NORMAL_ATTACK_DAMAGE;
+        PHASE_FOUR_PHANTOM_ARROW_DAMAGE = NORMAL_ATTACK_DAMAGE;
+        FINAL_SPARK_LASER_DAMAGE = GREAT_LASER_DAMAGE;
+    }
+
+    private void applyDifficultyHealth(boolean refillHealth) {
+        if (getAttribute(Attributes.MAX_HEALTH) != null) {
+            getAttribute(Attributes.MAX_HEALTH).setBaseValue(HP);
+            if (refillHealth) heal(getMaxHealth());
+        }
+    }
+
+    public int getFlareBombJetDirections() {
+        return FLARE_BOMB_JET_DIRECTIONS;
+    }
+
+    public int getFlareBombJetsPerDirection() {
+        return FLARE_BOMB_JETS_PER_DIRECTION;
+    }
+
+    public float getFlareBombJetSpacing() {
+        return FLARE_BOMB_JET_SPACING;
+    }
+
+    public int getFlareBombJetDelayPerBlock() {
+        return FLARE_BOMB_JET_DELAY_PER_BLOCK;
+    }
+
+    public float getFlareBombJetDamage() {
+        return FLARE_BOMB_JET_DAMAGE;
     }
 
     @Override
@@ -394,6 +693,7 @@ public class MutantEntity extends BossEntity {
     @Override
     protected void registerGoals() {
         goalSelector.addGoal(0, new FloatGoal(this));
+        goalSelector.addGoal(1, new FinalHitWaitGoal());
         goalSelector.addGoal(1, new NormalShootingAttack(this));
         goalSelector.addGoal(2, new NormalDashAttack(this));
         goalSelector.addGoal(3, new HowitzerAttack(this));
@@ -425,7 +725,7 @@ public class MutantEntity extends BossEntity {
 
     public static AttributeSupplier.Builder createAttributes() {
         return Mob.createMobAttributes()
-                .add(Attributes.MAX_HEALTH, HP)
+                .add(Attributes.MAX_HEALTH, 200)
                 .add(Attributes.FOLLOW_RANGE, 64);
     }
 
@@ -465,8 +765,12 @@ public class MutantEntity extends BossEntity {
         nextPhaseTwoAttack = ATTACK_PHASE_TWO_MAGNETIC;
         nextPhaseThreeAttack = ATTACK_PHASE_THREE_WATER_SPEAR_CENTER;
         nextPhaseFourAttack = ATTACK_PHASE_FOUR_PHANTOM_ARROW;
+        waitingForFinalHit = false;
+        finalHitLandingState = 0;
+        applyDifficultySettings();
+        applyDifficultyHealth(true);
         setInvulnerable(false);
-        heal(getMaxHealth());
+        setPowered(false);
         return result;
     }
 
@@ -476,9 +780,11 @@ public class MutantEntity extends BossEntity {
             stage = DEATH_PHASE;
             pendingActivePhase = -1;
             setInvulnerable(false);
+            setPowered(false);
             return super.hurt(source, amount);
         }
-        if (stage == PHASE_1_TRANSITION || stage == PHASE_2_TRANSITION || stage == PHASE_3_TRANSITION || stage == PHASE_4) {
+        if (stage == PHASE_1_TRANSITION || stage == PHASE_2_TRANSITION || stage == PHASE_3_TRANSITION
+                || (stage == PHASE_4 && !waitingForFinalHit)) {
             return false;
         }
         if (stage == PHASE_1 && getHealth() - amount <= getMaxHealth() * (2.0F / 3.0F)) {
@@ -501,6 +807,11 @@ public class MutantEntity extends BossEntity {
 
     @Override
     public void customServerAiStep() {
+        updatePoweredState();
+        if (waitingForFinalHit) {
+            super.customServerAiStep();
+            return;
+        }
         if (stage == PHASE_1 && getHealth() <= getMaxHealth() * (2.0F / 3.0F)) {
             beginPhase1Transition();
         }
@@ -522,6 +833,13 @@ public class MutantEntity extends BossEntity {
         super.customServerAiStep();
     }
 
+    private void updatePoweredState() {
+        boolean powered = stage == PHASE_1_TRANSITION || stage == PHASE_2_TRANSITION
+                || stage == PHASE_3_TRANSITION || (stage == PHASE_4 && !waitingForFinalHit);
+        setPowered(powered);
+        setInvulnerable(powered);
+    }
+
     private void beginPhase1Transition() {
         beginTransition(PHASE_1_TRANSITION);
     }
@@ -539,6 +857,7 @@ public class MutantEntity extends BossEntity {
         phaseTimer = TRANSITION_TIME;
         pendingActivePhase = -1;
         setInvulnerable(true);
+        setPowered(true);
     }
 
     private void finishTransition() {
@@ -553,6 +872,7 @@ public class MutantEntity extends BossEntity {
             phaseTimer = 0;
             setHealth(1.0F);
             setInvulnerable(true);
+            setPowered(true);
             entityData.set(MUSIC_PHASE, 4);
             nextPhaseFourAttack = ATTACK_PHASE_FOUR_PHANTOM_ARROW;
         }
@@ -596,6 +916,7 @@ public class MutantEntity extends BossEntity {
         phaseTimer = 0;
         setHealth(getMaxHealth());
         setInvulnerable(false);
+        setPowered(false);
         entityData.set(MUSIC_PHASE, nextPhase == PHASE_2 ? 2 : 3);
 
         if (nextPhase == PHASE_2) {
@@ -608,12 +929,64 @@ public class MutantEntity extends BossEntity {
     }
 
     private void finishPhaseFourAttack() {
-        if (stage != PHASE_4) {
+        if (stage != PHASE_4 || waitingForFinalHit) {
             return;
         }
-        stage = DEATH_PHASE;
+
+        waitingForFinalHit = true;
+        finalHitLandingState = 0;
+        nextPhaseFourAttack = -1;
+        setDeltaMovement(Vec3.ZERO);
         setInvulnerable(false);
-        kill();
+        setPowered(false);
+    }
+
+    private void updateFinalHitLanding() {
+        LivingEntity target = getTarget();
+        if (finalHitLandingState == 0 && target != null && target.isAlive()) {
+            getMoveControl().setWantedPosition(getX(), target.getY(), getZ(), 1.0D);
+            if (Math.abs(getY() - target.getY()) <= getBbHeight()) {
+                finalHitGroundY = findGroundY();
+                finalHitLandingState = 1;
+            }
+            return;
+        }
+
+        if (finalHitLandingState <= 1) {
+            if (finalHitLandingState == 0) {
+                finalHitGroundY = findGroundY();
+                finalHitLandingState = 1;
+            }
+            getMoveControl().setWantedPosition(getX(), finalHitGroundY, getZ(), 1.0D);
+            if (Math.abs(getY() - finalHitGroundY) <= getBbHeight()) {
+                finalHitLandingState = 2;
+            }
+            return;
+        }
+
+        getNavigation().stop();
+        setDeltaMovement(Vec3.ZERO);
+    }
+
+    private class FinalHitWaitGoal extends Goal {
+        private FinalHitWaitGoal() {
+            setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK));
+        }
+
+        @Override
+        public boolean canUse() {
+            return waitingForFinalHit;
+        }
+
+        @Override
+        public boolean canContinueToUse() {
+            return waitingForFinalHit;
+        }
+
+        @Override
+        public void tick() {
+            updateFinalHitLanding();
+        }
     }
 
     private void createRestrictionBoundary() {
@@ -683,12 +1056,18 @@ public class MutantEntity extends BossEntity {
     public void readAdditionalSaveData(CompoundTag compound) {
         super.readAdditionalSaveData(compound);
         stage = compound.getInt("Phase");
+        entityData.set(BOSS_DIFFICULTY, Mth.clamp(compound.getInt("BossDifficulty"), 0, 2));
+        applyDifficultySettings();
+        applyDifficultyHealth(false);
         phaseTimer = compound.getInt("PhaseTimer");
         pendingActivePhase = compound.contains("PendingActivePhase") ? compound.getInt("PendingActivePhase") : -1;
         phaseStartAlignmentState = compound.getInt("PhaseStartAlignmentState");
         phaseStartGroundY = compound.getDouble("PhaseStartGroundY");
         restrictionBoundaryCreated = compound.getBoolean("RestrictionBoundaryCreated");
         waterArenaDetachedForPeppermint = compound.getBoolean("WaterArenaDetachedForPeppermint");
+        waitingForFinalHit = compound.getBoolean("WaitingForFinalHit");
+        finalHitLandingState = compound.getInt("FinalHitLandingState");
+        finalHitGroundY = compound.getDouble("FinalHitGroundY");
         nextPhaseOneAttack = compound.getInt("NextPhaseOneAttack");
         nextPhaseTwoAttack = compound.getInt("NextPhaseTwoAttack");
         nextPhaseThreeAttack = compound.getInt("NextPhaseThreeAttack");
@@ -703,20 +1082,23 @@ public class MutantEntity extends BossEntity {
         }
         waterArenaCenter = new Vec3(compound.getDouble("WaterArenaCenterX"), compound.getDouble("WaterArenaCenterY"), compound.getDouble("WaterArenaCenterZ"));
         entityData.set(MUSIC_PHASE, getMusicPhaseForStage());
-        setInvulnerable(stage == PHASE_1_TRANSITION || stage == PHASE_2_TRANSITION
-                || stage == PHASE_3_TRANSITION || stage == PHASE_4);
+        updatePoweredState();
     }
 
     @Override
     public void addAdditionalSaveData(CompoundTag compound) {
         super.addAdditionalSaveData(compound);
         compound.putInt("Phase", stage);
+        compound.putInt("BossDifficulty", getBossDifficulty());
         compound.putInt("PhaseTimer", phaseTimer);
         compound.putInt("PendingActivePhase", pendingActivePhase);
         compound.putInt("PhaseStartAlignmentState", phaseStartAlignmentState);
         compound.putDouble("PhaseStartGroundY", phaseStartGroundY);
         compound.putBoolean("RestrictionBoundaryCreated", restrictionBoundaryCreated);
         compound.putBoolean("WaterArenaDetachedForPeppermint", waterArenaDetachedForPeppermint);
+        compound.putBoolean("WaitingForFinalHit", waitingForFinalHit);
+        compound.putInt("FinalHitLandingState", finalHitLandingState);
+        compound.putDouble("FinalHitGroundY", finalHitGroundY);
         compound.putInt("NextPhaseOneAttack", nextPhaseOneAttack);
         compound.putInt("NextPhaseTwoAttack", nextPhaseTwoAttack);
         compound.putInt("NextPhaseThreeAttack", nextPhaseThreeAttack);
@@ -782,7 +1164,7 @@ public class MutantEntity extends BossEntity {
         return FargoBosses.rl("entities/bellringer");
     }
 
-    private static class NormalShootingAttack extends Goal {
+    private class NormalShootingAttack extends Goal {
         private final MutantEntity mutant;
         @Nullable
         private LivingEntity target;
@@ -856,7 +1238,7 @@ public class MutantEntity extends BossEntity {
         }
     }
 
-    private static class NormalDashAttack extends Goal {
+    private class NormalDashAttack extends Goal {
         private static final int PHASE_WINDUP = 0;
         private static final int PHASE_DASH = 1;
         private static final int PHASE_RECOVER = 2;
@@ -988,7 +1370,7 @@ public class MutantEntity extends BossEntity {
         }
     }
 
-    private static class HowitzerAttack extends Goal {
+    private class HowitzerAttack extends Goal {
         private final MutantEntity mutant;
         @Nullable
         private LivingEntity target;
@@ -1051,7 +1433,7 @@ public class MutantEntity extends BossEntity {
         }
     }
 
-    private static class MagneticAttack extends Goal {
+    private class MagneticAttack extends Goal {
         private final MutantEntity mutant;
         @Nullable
         private LivingEntity target;
@@ -1155,7 +1537,7 @@ public class MutantEntity extends BossEntity {
         }
     }
 
-    private static class WaterBoltAttack extends Goal {
+    private class WaterBoltAttack extends Goal {
         private final MutantEntity mutant;
         private final List<WaterBoltEntity> spawnedWaterBolts = new ArrayList<>();
         @Nullable
@@ -1366,7 +1748,7 @@ public class MutantEntity extends BossEntity {
         }
     }
 
-    private static class PeppermintAttack extends Goal {
+    private class PeppermintAttack extends Goal {
         private final MutantEntity mutant;
         private final List<MutantSpinningPeppermintEntity> peppermints = new ArrayList<>();
         @Nullable
@@ -1447,6 +1829,8 @@ public class MutantEntity extends BossEntity {
             for (MutantSpinningPeppermintEntity peppermint : peppermints) {
                 if (!peppermint.isRemoved() && !peppermint.isStraight()) {
                     peppermint.setOrbitCenter(mutant.position());
+                    peppermint.updateOrbitPosition();
+                    peppermint.damageContactsNow();
                 }
             }
 
@@ -1542,7 +1926,7 @@ public class MutantEntity extends BossEntity {
         }
     }
 
-    private static class DinosaurAttack extends Goal {
+    private class DinosaurAttack extends Goal {
         private static final int PHASE_PREPARE = 0;
         private static final int PHASE_DASH = 1;
         private static final int PHASE_RECOVER = 2;
@@ -1787,7 +2171,7 @@ public class MutantEntity extends BossEntity {
         }
     }
 
-    private static class ArrowAttack extends Goal {
+    private class ArrowAttack extends Goal {
         private final MutantEntity mutant;
         @Nullable
         private LivingEntity target;
@@ -1798,6 +2182,7 @@ public class MutantEntity extends BossEntity {
         private int drumRounds;
         private int drumTimer;
         private int arrowTimer;
+        private int postAttackRestTimer;
         private boolean finished;
 
         private ArrowAttack(MutantEntity mutant) {
@@ -1831,6 +2216,7 @@ public class MutantEntity extends BossEntity {
             drumRounds = 0;
             drumTimer = 0;
             arrowTimer = 0;
+            postAttackRestTimer = 0;
             finished = false;
         }
 
@@ -1872,11 +2258,25 @@ public class MutantEntity extends BossEntity {
                 drumRounds++;
                 drumTimer = ARROW_ATTACK_DRUM_INTERVAL;
             }
+            if (drumRounds >= ARROW_ATTACK_DRUM_ROUNDS) {
+                finishAfterDifficultyRest();
+                return;
+            }
             if (--arrowTimer <= 0) {
                 fireArrowRain();
                 arrowTimer = ARROW_ATTACK_RAIN_INTERVAL;
             }
-            if (drumRounds >= ARROW_ATTACK_DRUM_ROUNDS) {
+        }
+
+        private void finishAfterDifficultyRest() {
+            if (mutant.getBossDifficulty() != 2 || ARROW_ATTACK_DIFFICULTY_TWO_REST_TIME <= 0) {
+                finished = true;
+                return;
+            }
+            if (postAttackRestTimer == 0) {
+                postAttackRestTimer = ARROW_ATTACK_DIFFICULTY_TWO_REST_TIME;
+            }
+            else if (--postAttackRestTimer <= 0) {
                 finished = true;
             }
         }
@@ -1957,7 +2357,7 @@ public class MutantEntity extends BossEntity {
         }
     }
 
-    private static class WaterSpearCenterAttack extends Goal {
+    private class WaterSpearCenterAttack extends Goal {
         private final MutantEntity mutant;
         @Nullable
         private LivingEntity target;
@@ -2061,7 +2461,7 @@ public class MutantEntity extends BossEntity {
         }
     }
 
-    private static class WaterSpearParallelAttack extends Goal {
+    private class WaterSpearParallelAttack extends Goal {
         private final MutantEntity mutant;
         @Nullable
         private LivingEntity target;
@@ -2216,7 +2616,7 @@ public class MutantEntity extends BossEntity {
         }
     }
 
-    private static class LaserSpreadAttack extends Goal {
+    private class LaserSpreadAttack extends Goal {
         private final MutantEntity mutant;
         @Nullable
         private LivingEntity target;
@@ -2325,7 +2725,7 @@ public class MutantEntity extends BossEntity {
         }
     }
 
-    private static class LaserMissileAttack extends Goal {
+    private class LaserMissileAttack extends Goal {
         private final MutantEntity mutant;
         @Nullable
         private LivingEntity target;
@@ -2440,7 +2840,7 @@ public class MutantEntity extends BossEntity {
         }
     }
 
-    private static class HalberdAttack extends Goal {
+    private class HalberdAttack extends Goal {
         private static final int PHASE_ALIGN = 0;
         private static final int PHASE_DESCEND = 1;
         private static final int PHASE_MARK = 2;
@@ -2665,7 +3065,7 @@ public class MutantEntity extends BossEntity {
         }
     }
 
-    private static class VoidRuneAttack extends Goal {
+    private class VoidRuneAttack extends Goal {
         private final MutantEntity mutant;
         @Nullable
         private LivingEntity target;
@@ -2768,7 +3168,7 @@ public class MutantEntity extends BossEntity {
         }
     }
 
-    private static class AbyssalAttack extends Goal {
+    private class AbyssalAttack extends Goal {
         private static final int PHASE_ALIGN = 0;
         private static final int PHASE_DESCEND = 1;
         private static final int PHASE_PREDICT = 2;
@@ -2958,7 +3358,7 @@ public class MutantEntity extends BossEntity {
         }
     }
 
-    private static class FlareAttack extends Goal {
+    private class FlareAttack extends Goal {
         private final MutantEntity mutant;
         @Nullable
         private LivingEntity target;
@@ -3062,7 +3462,7 @@ public class MutantEntity extends BossEntity {
         }
     }
 
-    private static class IgnisAttack extends Goal {
+    private class IgnisAttack extends Goal {
         private static final int PHASE_ALIGN = 0;
         private static final int PHASE_DESCEND = 1;
         private static final int PHASE_PREPARE = 2;
@@ -3248,7 +3648,7 @@ public class MutantEntity extends BossEntity {
         }
     }
 
-    private static class SandstormAttack extends Goal {
+    private class SandstormAttack extends Goal {
         private static final int PHASE_ALIGN = 0;
         private static final int PHASE_DESCEND = 1;
         private static final int PHASE_PREPARE = 2;
@@ -3348,8 +3748,21 @@ public class MutantEntity extends BossEntity {
             mutant.getLookControl().setLookAt(target, NORMAL_ATTACK_LOOK_LIMIT, NORMAL_ATTACK_LOOK_LIMIT);
             orbitSandstormsAroundMutant();
             hurtCollisionContacts();
+            applyDesertCurse();
             if (--phaseTimer <= 0) {
                 attackPhase = PHASE_DONE;
+            }
+        }
+
+        private void applyDesertCurse() {
+            if (mutant.getBossDifficulty() != 2 || mutant.tickCount % 20 != 0) {
+                return;
+            }
+            double range = RESTRICTION_BOUNDARY_RADIUS;
+            int duration = Math.max(20, phaseTimer + 20);
+            for (Player player : mutant.level().getEntitiesOfClass(Player.class,
+                    mutant.getBoundingBox().inflate(range), player -> player.isAlive() && !player.isSpectator())) {
+                player.addEffect(new MobEffectInstance(ModEffect.EFFECTCURSE_OF_DESERT.get(), duration, 0), mutant);
             }
         }
 
@@ -3449,7 +3862,7 @@ public class MutantEntity extends BossEntity {
         }
     }
 
-    private static class SuperWaterSpearAttack extends Goal {
+    private class SuperWaterSpearAttack extends Goal {
         private static final int PHASE_ALIGN = 0;
         private static final int PHASE_DESCEND = 1;
         private static final int PHASE_PREPARE = 2;
@@ -3643,7 +4056,7 @@ public class MutantEntity extends BossEntity {
         }
     }
 
-    private static class FinalSparkAttack extends Goal {
+    private class FinalSparkAttack extends Goal {
         private static final int PHASE_ALIGN = 0;
         private static final int PHASE_DESCEND = 1;
         private static final int PHASE_WAIT_FIRST_LASER = 2;
@@ -3862,7 +4275,7 @@ public class MutantEntity extends BossEntity {
         }
     }
 
-    private static class PhantomArrowAttack extends Goal {
+    private class PhantomArrowAttack extends Goal {
         private static final int PHASE_ALIGN = 0;
         private static final int PHASE_DESCEND = 1;
         private static final int PHASE_PREPARE = 2;
