@@ -61,3 +61,31 @@ description='''${mod_description}'''
    versionRange="${minecraft_version_range}"
    ordering="NONE"
    side="BOTH"
+
+[[dependencies.${mod_id}]]
+   modId="legendary_monsters"
+   mandatory=true
+   versionRange="[0,)"
+   ordering="AFTER"
+   side="BOTH"
+
+[[dependencies.${mod_id}]]
+   modId="cataclysm"
+   mandatory=true
+   versionRange="[0,)"
+   ordering="AFTER"
+   side="BOTH"
+
+[[dependencies.${mod_id}]]
+   modId="meetyourfight"
+   mandatory=true
+   versionRange="[0,)"
+   ordering="AFTER"
+   side="BOTH"
+
+[[dependencies.${mod_id}]]
+   modId="alexscaves"
+   mandatory=true
+   versionRange="[0,)"
+   ordering="AFTER"
+   side="BOTH"

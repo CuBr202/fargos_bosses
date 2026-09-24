@@ -1,0 +1,9 @@
+{
+  "sources": [
+    {
+      "type": "single",
+      "resource": "cataclysm:mob_effect/curse_of_desert",
+      "sprite": "fargo_bosses:mutant_inversion"
+    }
+  ]
+}

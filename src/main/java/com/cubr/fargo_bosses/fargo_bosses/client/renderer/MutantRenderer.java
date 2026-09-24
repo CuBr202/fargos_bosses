@@ -5,6 +5,7 @@ import com.cubr.fargo_bosses.fargo_bosses.entity.MutantEntity;
 import lykrast.meetyourfight.renderer.GenericGlowLayer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider.Context;
 import net.minecraft.client.renderer.entity.MobRenderer;
+import net.minecraft.client.renderer.entity.layers.ItemInHandLayer;
 import net.minecraft.resources.ResourceLocation;
 
 public class MutantRenderer extends MobRenderer<MutantEntity, MutantModel> {
@@ -13,6 +14,7 @@ public class MutantRenderer extends MobRenderer<MutantEntity, MutantModel> {
 
     public MutantRenderer(Context context) {
         super(context, new MutantModel(context.bakeLayer(MutantModel.MODEL)), 0.5F);
+        addLayer(new ItemInHandLayer<>(this, context.getItemInHandRenderer()));
         addLayer(new GenericGlowLayer<>(this, GLOW));
         addLayer(new MutantWingLayer(this));
         addLayer(new MutantArmorLayer(this, context.getModelSet()));

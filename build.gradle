@@ -244,8 +244,7 @@ dependencies {
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
 
-    //JEI
-    compileOnly fg.deobf("mezz.jei:jei-1.20.1-forge-api:15.3.0.8")
+    // Development/test environment only
     runtimeOnly fg.deobf("mezz.jei:jei-1.20.1-forge:15.3.0.8")
 
     //curios
@@ -271,26 +270,20 @@ dependencies {
     compileOnly fg.deobf("curse.maven:alexs-caves-924854:5848216")
     runtimeOnly fg.deobf("curse.maven:alexs-caves-924854:5848216")
 
-    compileOnly fg.deobf("curse.maven:placebo-283644:6274231")
+    // Optional mods used only by the development runtime
     runtimeOnly fg.deobf("curse.maven:placebo-283644:6274231")
 
-    compileOnly fg.deobf("curse.maven:apothic-attributes-898963:5634071")
     runtimeOnly fg.deobf("curse.maven:apothic-attributes-898963:5634071")
 
     // artifacts
-    compileOnly fg.deobf("curse.maven:cloth-config-348521:5729105")
     runtimeOnly fg.deobf("curse.maven:cloth-config-348521:5729105")
 
-    compileOnly fg.deobf("curse.maven:architectury-api-419699:5137938")
     runtimeOnly fg.deobf("curse.maven:architectury-api-419699:5137938")
 
-    compileOnly fg.deobf("curse.maven:expandability-465066:5301414")
     runtimeOnly fg.deobf("curse.maven:expandability-465066:5301414")
 
-    compileOnly fg.deobf("curse.maven:artifacts-312353:7903806")
     runtimeOnly fg.deobf("curse.maven:artifacts-312353:7903806")
 
-    compileOnly fg.deobf("curse.maven:stellar-striker-1345683:7051960")
     runtimeOnly fg.deobf("curse.maven:stellar-striker-1345683:7051960")
 
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'

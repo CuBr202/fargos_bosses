@@ -6,6 +6,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import javax.annotation.Nullable;
@@ -101,16 +102,16 @@ public class MutantSpinningPeppermintEntity extends SpinningPeppermintEntity {
 
         updateSpiral();
         if (isStraight()) {
+            AABB previousBox = getBoundingBox();
             Vec3 velocity = new Vec3(0.0D, 0.0D, -0.01D * getSpinSpeed())
                     .yRot((float) -Math.toRadians(getYRot()));
             setDeltaMovement(getDeltaMovement().add(velocity));
             move(MoverType.SELF, getDeltaMovement());
+            hurtEntities(previousBox);
         }
         else {
             updateOrbitPosition();
         }
-
-        hurtEntities();
     }
 
     /** Updates a non-straight peppermint after its caster's position changes. */
@@ -122,14 +123,11 @@ public class MutantSpinningPeppermintEntity extends SpinningPeppermintEntity {
         Vec3 offset = new Vec3(0.0D, 0.0D, getSpinRadius())
                 .yRot((float) -Math.toRadians(angle));
         Vec3 destination = orbitCenter.add(offset);
+        AABB previousBox = getBoundingBox();
         move(MoverType.SELF, destination.subtract(position()));
         setDeltaMovement(Vec3.ZERO);
-    }
-
-    /** Applies the normal strict-hitbox damage check at the peppermint's current position. */
-    public void damageContactsNow() {
         if (!level().isClientSide) {
-            hurtEntities();
+            hurtEntities(previousBox);
         }
     }
 
@@ -149,16 +147,23 @@ public class MutantSpinningPeppermintEntity extends SpinningPeppermintEntity {
         }
     }
 
-    private void hurtEntities() {
+    private void hurtEntities(AABB previousBox) {
         LivingEntity owner = getOwner();
         if (owner == null) {
             return;
         }
 
+        AABB currentBox = getBoundingBox();
+        Vec3 start = previousBox.getCenter();
+        Vec3 end = currentBox.getCenter();
         DamageSource source = damageSources().mobProjectile(this, owner);
-        for (LivingEntity entity : level().getEntitiesOfClass(LivingEntity.class, getBoundingBox(),
-                entity -> getBoundingBox().intersects(entity.getBoundingBox()))) {
-            if (entity != owner && !owner.isAlliedTo(entity) && entity.hurt(source, damage)) {
+        for (LivingEntity entity : level().getEntitiesOfClass(LivingEntity.class, previousBox.minmax(currentBox),
+                entity -> entity.isAlive() && !entity.isSpectator() && entity != owner && !owner.isAlliedTo(entity))) {
+            // Sweep the actual hitbox, not an enlarged damage radius or just the final position.
+            AABB contactBox = entity.getBoundingBox().inflate(currentBox.getXsize() * 0.5D,
+                    currentBox.getYsize() * 0.5D, currentBox.getZsize() * 0.5D);
+            if ((contactBox.contains(start) || contactBox.contains(end) || contactBox.clip(start, end).isPresent())
+                    && entity.hurt(source, damage)) {
                 entity.knockback(0.3F, getX() - entity.getX(), getZ() - entity.getZ());
             }
         }

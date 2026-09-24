@@ -4,6 +4,7 @@ import com.cubr.fargo_bosses.fargo_bosses.FargoBosses;
 import com.cubr.fargo_bosses.fargo_bosses.entity.MutantEntity;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.model.ArmedModel;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.model.geom.ModelPart;
@@ -14,8 +15,9 @@ import net.minecraft.client.model.geom.builders.LayerDefinition;
 import net.minecraft.client.model.geom.builders.MeshDefinition;
 import net.minecraft.client.model.geom.builders.PartDefinition;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.HumanoidArm;
 
-public class MutantModel extends EntityModel<MutantEntity> {
+public class MutantModel extends EntityModel<MutantEntity> implements ArmedModel {
     public static final ModelLayerLocation MODEL = new ModelLayerLocation(FargoBosses.rl("mutant"), "main");
 
     private final ModelPart head;
@@ -76,6 +78,15 @@ public class MutantModel extends EntityModel<MutantEntity> {
         rightArm.xRot = -30.0F * Mth.DEG_TO_RAD;
         leftLeg.xRot = Mth.cos(limbSwing * 0.6662F + Mth.PI) * 1.4F * limbSwingAmount;
         rightLeg.xRot = Mth.cos(limbSwing * 0.6662F) * 1.4F * limbSwingAmount;
+    }
+
+    @Override
+    public void translateToHand(HumanoidArm arm, PoseStack poseStack) {
+        (arm == HumanoidArm.RIGHT ? rightArm : leftArm).translateAndRotate(poseStack);
+        if (arm == HumanoidArm.RIGHT) {
+            // The right arm is two pixels longer than a vanilla humanoid arm.
+            poseStack.translate(0.0D, 2.0D / 16.0D, 0.0D);
+        }
     }
 
     @Override

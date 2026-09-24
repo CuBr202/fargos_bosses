@@ -1,11 +1,13 @@
 package com.cubr.fargo_bosses.fargo_bosses;
 
 import com.cubr.fargo_bosses.fargo_bosses.entity.MutantEntity;
+import com.cubr.fargo_bosses.fargo_bosses.registry.ModEffects;
 import com.cubr.fargo_bosses.fargo_bosses.registry.ModEntities;
 import com.cubr.fargo_bosses.fargo_bosses.registry.ModSounds;
 import com.cubr.fargo_bosses.fargo_bosses.entity.AbominationEntity;
 import com.cubr.fargo_bosses.fargo_bosses.entity.FlexibleEnergyBeamEntity;
 import com.cubr.fargo_bosses.fargo_bosses.entity.RotatingSoulShieldEntity;
+import com.github.alexmodguy.alexscaves.server.entity.item.WaveEntity;
 import com.mojang.logging.LogUtils;
 import lykrast.meetyourfight.entity.RoseSpiritEntity;
 import net.minecraft.resources.ResourceLocation;
@@ -37,6 +39,7 @@ public class FargoBosses {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
 
         ModEntities.REGISTER.register(modEventBus);
+        ModEffects.REGISTER.register(modEventBus);
         ModSounds.REGISTER.register(modEventBus);
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.SPEC);
 
@@ -103,7 +106,15 @@ public class FargoBosses {
 
     }
 
-    /*
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public void applyMutantWaveDamage(LivingHurtEvent event) {
+        if (event.getSource().getDirectEntity() instanceof WaveEntity wave
+                && wave.getOwner() instanceof MutantEntity mutant) {
+            event.setAmount(mutant.getWaterWaveDamage());
+        }
+    }
+
+
     @SubscribeEvent
     public void debugDifficulty(MobSpawnEvent event){
         if(event.getEntity() instanceof AbominationEntity abom){
@@ -111,10 +122,10 @@ public class FargoBosses {
         }
 
         if(event.getEntity() instanceof MutantEntity mutant){
-            ((MutantEntity) mutant).setBossDifficulty(2);
+            ((MutantEntity) mutant).setBossDifficulty(1);
         }
     }
-    */
+
 
     public static ResourceLocation rl(String path) {
         return new ResourceLocation(MODID, path);

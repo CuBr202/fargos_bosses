@@ -3,6 +3,7 @@ package com.cubr.fargo_bosses.fargo_bosses.entity;
 import com.cubr.fargo_bosses.fargo_bosses.Config;
 import com.cubr.fargo_bosses.fargo_bosses.FargoBosses;
 import com.cubr.fargo_bosses.fargo_bosses.client.sound.MutantMusic;
+import com.cubr.fargo_bosses.fargo_bosses.registry.ModEffects;
 import com.cubr.fargo_bosses.fargo_bosses.registry.ModEntities;
 import com.cubr.fargo_bosses.fargo_bosses.registry.ModSounds;
 import com.github.L_Ender.cataclysm.entity.AnimationMonster.BossMonsters.The_Leviathan.Abyss_Mine_Entity;
@@ -17,12 +18,12 @@ import com.github.L_Ender.cataclysm.entity.projectile.Void_Rune_Entity;
 import com.github.L_Ender.cataclysm.entity.projectile.Water_Spear_Entity;
 import com.github.L_Ender.cataclysm.init.ModParticle;
 import com.github.L_Ender.cataclysm.init.ModItems;
-import com.github.L_Ender.cataclysm.init.ModEffect;
-import com.github.alexmodguy.alexscaves.server.entity.item.WaterBoltEntity;
+import com.github.alexmodguy.alexscaves.server.entity.item.WaveEntity;
 import com.github.alexmodguy.alexscaves.server.entity.item.DarkArrowEntity;
 import com.github.alexmodguy.alexscaves.server.entity.item.ThrownWasteDrumEntity;
 import com.github.alexmodguy.alexscaves.server.entity.ACEntityRegistry;
 import com.github.alexmodguy.alexscaves.server.item.ACItemRegistry;
+import com.github.alexmodguy.alexscaves.server.misc.ACSoundRegistry;
 import com.github.alexmodguy.alexscaves.client.particle.ACParticleRegistry;
 import lykrast.meetyourfight.entity.BossEntity;
 import lykrast.meetyourfight.entity.ai.MoveFrontOfTarget;
@@ -65,6 +66,7 @@ import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
@@ -97,7 +99,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
     private static final int ATTACK_NORMAL_DASH = 1;
     private static final int ATTACK_NORMAL_HOWITZER = 2;
     private static final int ATTACK_PHASE_TWO_MAGNETIC = 0;
-    private static final int ATTACK_PHASE_TWO_WATER_BOLT = 1;
+    private static final int ATTACK_PHASE_TWO_WATER = 1;
     private static final int ATTACK_PHASE_TWO_PEPPERMINT = 2;
     private static final int ATTACK_PHASE_TWO_DINOSAUR = 3;
     private static final int ATTACK_PHASE_TWO_ARROW = 4;
@@ -134,22 +136,27 @@ public class MutantEntity extends BossEntity implements PowerableMob {
     private int MAGNETIC_ATTACK_PREPARE_TIME = 30;
     private int MAGNETIC_ATTACK_DAMAGE = NORMAL_ATTACK_DAMAGE;
     private int MAGNETIC_WEAPON_HEIGHT = 1;
-    private float MAGNETIC_WEAPON_CHASE_SPEED = 0.25F;
-    private float MAGNETIC_WEAPON_HIT_DISTANCE = 4.0F;
-    private int MAGNETIC_WEAPON_HIT_COOLDOWN = 5;
-    private int MAGNETIC_WEAPON_RANGE_PARTICLE_INTERVAL = 2;
-    private int MAGNETIC_WEAPON_RANGE_PARTICLE_POINTS = 16;
-    private float MAGNETIC_WEAPON_RANGE_PARTICLE_HEIGHT = 0.05F;
-    private int WATER_BOLT_ATTACK_POSITIONS = 4;
-    private int WATER_BOLT_DISTANCE = 12;
-    private int WATER_BOLT_Y_OFFSET = 1;
-    private int WATER_BOLT_VOLLEYS_PER_POSITION = 3;
-    private int WATER_BOLT_BOLTS_PER_VOLLEY = 3;
-    private int WATER_BOLT_PREPARE_TIME = 30;
-    private int WATER_BOLT_VOLLEY_INTERVAL = 5;
-    private int WATER_BOLT_SPREAD_DEGREES = 30;
-    private float WATER_BOLT_SPEED = 3.0F;
-    private int WATER_BOLT_INACCURACY = 0;
+    private int MAGNETIC_WEAPON_SPAWN_INTERVAL = 10;
+    private int MAGNETIC_WEAPONS_PER_SPAWN = 2;
+    private float MAGNETIC_WEAPON_SPAWN_OFFSET = 2.0F;
+    private float MAGNETIC_WEAPON_SPEED = 0.65F;
+    private float MAGNETIC_PLAYER_PULL_PER_BLOCK = 0.003F;
+    private float MAGNETIC_PLAYER_MAX_PULL = 0.12F;
+    private static final List<Item> MAGNETIC_WEAPON_ITEMS = List.of(
+            Items.IRON_SWORD, Items.IRON_AXE, Items.GOLDEN_SWORD, Items.GOLDEN_AXE,
+            Items.DIAMOND_SWORD, Items.DIAMOND_AXE, Items.NETHERITE_SWORD, Items.NETHERITE_AXE);
+    private int WATER_ATTACK_PREPARE_TIME = 30;
+    private int WATER_DASH_COUNT = 4;
+    private int WATER_DASH_DURATION = 10;
+    private int WATER_DASH_RECOVER_TIME = 10;
+    private float WATER_DASH_SPEED = 2.5F;
+    private float WATER_DASH_CONTACT_RANGE = 1.0F;
+    private int WATER_WAVE_INTERVAL = 2;
+    private int WATER_WAVE_LIFESPAN = 10;
+    private float WATER_WAVE_SCALE = 1.0F;
+    private float WATER_WAVE_SIDE_ANGLE = 60.0F;
+    private float WATER_WAVE_SIDE_OFFSET = 0.5F;
+    private float WATER_RETURN_SPEED = 1.5F;
     private int PEPPERMINT_ATTACK_DURATION = 300;
     private int PEPPERMINT_ATTACK_PREPARE_TIME = 30;
     private int PEPPERMINT_SMALL_RING_COUNT = 3;
@@ -157,19 +164,17 @@ public class MutantEntity extends BossEntity implements PowerableMob {
     private int PEPPERMINT_LARGE_RING_COUNT = 9;
     private float PEPPERMINT_LARGE_RING_RADIUS = 13.0F;
     private float PEPPERMINT_SPIN_SPEED = 7.0F;
+    private int PEPPERMINT_STRAIGHT_ROUNDS = 10;
     private int PEPPERMINT_STRAIGHT_INTERVAL = 30;
     private int PEPPERMINT_STRAIGHT_COUNT = 3;
-    private int PEPPERMINT_STRAIGHT_SPREAD_DEGREES = 30;
+    private float PEPPERMINT_STRAIGHT_SPACING = 3.0F;
+    private float PEPPERMINT_STRAIGHT_START_SHIFT = 1.0F;
     private float PEPPERMINT_DAMAGE = NORMAL_ATTACK_DAMAGE;
     private float PEPPERMINT_HIT_RANGE = 0.5F;
     private float PEPPERMINT_FOLLOW_SPEED = 1.0F;
     private int DINOSAUR_ATTACK_PREPARE_TIME = 40;
-    private int DINOSAUR_DASH_COUNT = 4;
-    private int DINOSAUR_DASH_DURATION = 10;
-    private int DINOSAUR_DASH_RECOVER_TIME = 10;
-    private float DINOSAUR_DASH_SPEED = 2.5F;
-    private float DINOSAUR_DASH_CONTACT_RANGE = 1.0F;
-    private int DINOSAUR_DASH_TRAIL_PARTICLES = 2;
+    private int DINOSAUR_THROW_COUNT = 3;
+    private float DINOSAUR_MIN_TOSS_ANGLE_DIFFERENCE = 120.0F;
     private float DINOSAUR_TOSS_HEIGHT = 6.0F;
     private float DINOSAUR_TOSS_DISTANCE = 12.0F;
     private float DINOSAUR_TOSS_MOVE_SPEED = 1.0F;
@@ -178,22 +183,24 @@ public class MutantEntity extends BossEntity implements PowerableMob {
     private int DINOSAUR_SPEAR_WINDUP_TIME = 20;
     private int DINOSAUR_SPEAR_MAX_FLIGHT_TIME = 100;
     private float DINOSAUR_RETURN_SPEED = 3.0F;
-    private int ARROW_ATTACK_DRUM_ROUNDS = 3;
+    private int ARROW_ATTACK_POSITIONS = 4;
+    private int ARROW_ATTACK_DISTANCE = 12;
+    private int ARROW_ATTACK_Y_OFFSET = 1;
+    private int ARROW_ATTACK_VOLLEYS_PER_POSITION = 3;
+    private int ARROW_ATTACK_ARROWS_PER_VOLLEY = 3;
     private int ARROW_ATTACK_PREPARE_TIME = 30;
+    private int ARROW_ATTACK_VOLLEY_INTERVAL = 5;
+    private int ARROW_ATTACK_SPREAD_DEGREES = 30;
+    private float ARROW_ATTACK_DAMAGE = NORMAL_ATTACK_DAMAGE;
+    private float ARROW_ATTACK_SPEED = 3.0F;
+    private float ARROW_ATTACK_INACCURACY = 0.0F;
+    private int ARROW_ATTACK_RECOVERY_TIME = 20;
+    private int ARROW_ATTACK_DIFFICULTY_TWO_REST_TIME = 30;
+    private int ARROW_ATTACK_DRUM_ROUNDS = 3;
     private int ARROW_ATTACK_DRUM_INTERVAL = 80;
     private int ARROW_ATTACK_DRUM_COUNT = 4;
     private float ARROW_ATTACK_DRUM_THROW_SPEED = 1.5F;
     private float ARROW_ATTACK_DRUM_THROW_HEIGHT = 0.8F;
-    private int ARROW_ATTACK_RAIN_INTERVAL = 20;
-    private int ARROW_ATTACK_RAIN_COUNT = 15;
-    private int ARROW_ATTACK_RAIN_MAX_HEIGHT = 15;
-    private float ARROW_ATTACK_RAIN_HORIZONTAL_SPREAD = 8.0F;
-    private float ARROW_ATTACK_RAIN_VERTICAL_SPREAD = 2.0F;
-    private float ARROW_ATTACK_RAIN_DAMAGE = NORMAL_ATTACK_DAMAGE;
-    private float ARROW_ATTACK_RAIN_MIN_SPEED = 0.5F;
-    private float ARROW_ATTACK_RAIN_SPEED_VARIANCE = 1.5F;
-    private float ARROW_ATTACK_RAIN_INACCURACY = 20.0F;
-    private int ARROW_ATTACK_DIFFICULTY_TWO_REST_TIME = 30;
     private int WATER_SPEAR_CENTER_WAVES = 8;
     private int WATER_SPEAR_CENTER_SPEARS_PER_WAVE = 8;
     private int WATER_SPEAR_CENTER_INTERVAL = 30;
@@ -354,7 +361,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
 
     // Mutable variables. DO NOT change this.
-    public int stage;
+    public int phase;
     private int phaseTimer;
     private int pendingActivePhase = -1;
     private int phaseStartAlignmentState;
@@ -369,6 +376,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
     private boolean waterArenaDetachedForPeppermint;
     private Vec3 waterArenaCenter = Vec3.ZERO;
     private boolean waitingForFinalHit;
+    private boolean phaseHealthProtectionEnabled;
     private int finalHitLandingState;
     private double finalHitGroundY;
 
@@ -376,7 +384,8 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         super(type, level);
         BossBarUtil.useNotchedTwelve(this);
         moveControl = new VexMovementController(this);
-        xpReward = 50;
+        xpReward = 50000;
+        phaseHealthProtectionEnabled = true;
     }
 
     @Override
@@ -432,22 +441,24 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         MAGNETIC_ATTACK_DURATION = configInt("MAGNETIC_ATTACK_DURATION");
         MAGNETIC_ATTACK_PREPARE_TIME = configInt("MAGNETIC_ATTACK_PREPARE_TIME");
         MAGNETIC_WEAPON_HEIGHT = configInt("MAGNETIC_WEAPON_HEIGHT");
-        MAGNETIC_WEAPON_CHASE_SPEED = configFloat("MAGNETIC_WEAPON_CHASE_SPEED");
-        MAGNETIC_WEAPON_HIT_DISTANCE = configFloat("MAGNETIC_WEAPON_HIT_DISTANCE");
-        MAGNETIC_WEAPON_HIT_COOLDOWN = configInt("MAGNETIC_WEAPON_HIT_COOLDOWN");
-        MAGNETIC_WEAPON_RANGE_PARTICLE_INTERVAL = configInt("MAGNETIC_WEAPON_RANGE_PARTICLE_INTERVAL");
-        MAGNETIC_WEAPON_RANGE_PARTICLE_POINTS = configInt("MAGNETIC_WEAPON_RANGE_PARTICLE_POINTS");
-        MAGNETIC_WEAPON_RANGE_PARTICLE_HEIGHT = configFloat("MAGNETIC_WEAPON_RANGE_PARTICLE_HEIGHT");
-        WATER_BOLT_ATTACK_POSITIONS = configInt("WATER_BOLT_ATTACK_POSITIONS");
-        WATER_BOLT_DISTANCE = configInt("WATER_BOLT_DISTANCE");
-        WATER_BOLT_Y_OFFSET = configInt("WATER_BOLT_Y_OFFSET");
-        WATER_BOLT_VOLLEYS_PER_POSITION = configInt("WATER_BOLT_VOLLEYS_PER_POSITION");
-        WATER_BOLT_BOLTS_PER_VOLLEY = configInt("WATER_BOLT_BOLTS_PER_VOLLEY");
-        WATER_BOLT_PREPARE_TIME = configInt("WATER_BOLT_PREPARE_TIME");
-        WATER_BOLT_VOLLEY_INTERVAL = configInt("WATER_BOLT_VOLLEY_INTERVAL");
-        WATER_BOLT_SPREAD_DEGREES = configInt("WATER_BOLT_SPREAD_DEGREES");
-        WATER_BOLT_SPEED = configFloat("WATER_BOLT_SPEED");
-        WATER_BOLT_INACCURACY = configInt("WATER_BOLT_INACCURACY");
+        MAGNETIC_WEAPON_SPAWN_INTERVAL = configInt("MAGNETIC_WEAPON_SPAWN_INTERVAL");
+        MAGNETIC_WEAPONS_PER_SPAWN = configInt("MAGNETIC_WEAPONS_PER_SPAWN");
+        MAGNETIC_WEAPON_SPAWN_OFFSET = configFloat("MAGNETIC_WEAPON_SPAWN_OFFSET");
+        MAGNETIC_WEAPON_SPEED = configFloat("MAGNETIC_WEAPON_SPEED");
+        MAGNETIC_PLAYER_PULL_PER_BLOCK = configFloat("MAGNETIC_PLAYER_PULL_PER_BLOCK");
+        MAGNETIC_PLAYER_MAX_PULL = configFloat("MAGNETIC_PLAYER_MAX_PULL");
+        WATER_ATTACK_PREPARE_TIME = configInt("WATER_ATTACK_PREPARE_TIME");
+        WATER_DASH_COUNT = configInt("WATER_DASH_COUNT");
+        WATER_DASH_DURATION = configInt("WATER_DASH_DURATION");
+        WATER_DASH_RECOVER_TIME = configInt("WATER_DASH_RECOVER_TIME");
+        WATER_DASH_SPEED = configFloat("WATER_DASH_SPEED");
+        WATER_DASH_CONTACT_RANGE = configFloat("WATER_DASH_CONTACT_RANGE");
+        WATER_WAVE_INTERVAL = configInt("WATER_WAVE_INTERVAL");
+        WATER_WAVE_LIFESPAN = configInt("WATER_WAVE_LIFESPAN");
+        WATER_WAVE_SCALE = configFloat("WATER_WAVE_SCALE");
+        WATER_WAVE_SIDE_ANGLE = configFloat("WATER_WAVE_SIDE_ANGLE");
+        WATER_WAVE_SIDE_OFFSET = configFloat("WATER_WAVE_SIDE_OFFSET");
+        WATER_RETURN_SPEED = configFloat("WATER_RETURN_SPEED");
         PEPPERMINT_ATTACK_DURATION = configInt("PEPPERMINT_ATTACK_DURATION");
         PEPPERMINT_ATTACK_PREPARE_TIME = configInt("PEPPERMINT_ATTACK_PREPARE_TIME");
         PEPPERMINT_SMALL_RING_COUNT = configInt("PEPPERMINT_SMALL_RING_COUNT");
@@ -455,18 +466,16 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         PEPPERMINT_LARGE_RING_COUNT = configInt("PEPPERMINT_LARGE_RING_COUNT");
         PEPPERMINT_LARGE_RING_RADIUS = configFloat("PEPPERMINT_LARGE_RING_RADIUS");
         PEPPERMINT_SPIN_SPEED = configFloat("PEPPERMINT_SPIN_SPEED");
+        PEPPERMINT_STRAIGHT_ROUNDS = configInt("PEPPERMINT_STRAIGHT_ROUNDS");
         PEPPERMINT_STRAIGHT_INTERVAL = configInt("PEPPERMINT_STRAIGHT_INTERVAL");
         PEPPERMINT_STRAIGHT_COUNT = configInt("PEPPERMINT_STRAIGHT_COUNT");
-        PEPPERMINT_STRAIGHT_SPREAD_DEGREES = configInt("PEPPERMINT_STRAIGHT_SPREAD_DEGREES");
+        PEPPERMINT_STRAIGHT_SPACING = configFloat("PEPPERMINT_STRAIGHT_SPACING");
+        PEPPERMINT_STRAIGHT_START_SHIFT = configFloat("PEPPERMINT_STRAIGHT_START_SHIFT");
         PEPPERMINT_HIT_RANGE = configFloat("PEPPERMINT_HIT_RANGE");
         PEPPERMINT_FOLLOW_SPEED = configFloat("PEPPERMINT_FOLLOW_SPEED");
         DINOSAUR_ATTACK_PREPARE_TIME = configInt("DINOSAUR_ATTACK_PREPARE_TIME");
-        DINOSAUR_DASH_COUNT = configInt("DINOSAUR_DASH_COUNT");
-        DINOSAUR_DASH_DURATION = configInt("DINOSAUR_DASH_DURATION");
-        DINOSAUR_DASH_RECOVER_TIME = configInt("DINOSAUR_DASH_RECOVER_TIME");
-        DINOSAUR_DASH_SPEED = configFloat("DINOSAUR_DASH_SPEED");
-        DINOSAUR_DASH_CONTACT_RANGE = configFloat("DINOSAUR_DASH_CONTACT_RANGE");
-        DINOSAUR_DASH_TRAIL_PARTICLES = configInt("DINOSAUR_DASH_TRAIL_PARTICLES");
+        DINOSAUR_THROW_COUNT = configInt("DINOSAUR_THROW_COUNT");
+        DINOSAUR_MIN_TOSS_ANGLE_DIFFERENCE = configFloat("DINOSAUR_MIN_TOSS_ANGLE_DIFFERENCE");
         DINOSAUR_TOSS_HEIGHT = configFloat("DINOSAUR_TOSS_HEIGHT");
         DINOSAUR_TOSS_DISTANCE = configFloat("DINOSAUR_TOSS_DISTANCE");
         DINOSAUR_TOSS_MOVE_SPEED = configFloat("DINOSAUR_TOSS_MOVE_SPEED");
@@ -475,21 +484,23 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         DINOSAUR_SPEAR_WINDUP_TIME = configInt("DINOSAUR_SPEAR_WINDUP_TIME");
         DINOSAUR_SPEAR_MAX_FLIGHT_TIME = configInt("DINOSAUR_SPEAR_MAX_FLIGHT_TIME");
         DINOSAUR_RETURN_SPEED = configFloat("DINOSAUR_RETURN_SPEED");
-        ARROW_ATTACK_DRUM_ROUNDS = configInt("ARROW_ATTACK_DRUM_ROUNDS");
+        ARROW_ATTACK_POSITIONS = configInt("ARROW_ATTACK_POSITIONS");
+        ARROW_ATTACK_DISTANCE = configInt("ARROW_ATTACK_DISTANCE");
+        ARROW_ATTACK_Y_OFFSET = configInt("ARROW_ATTACK_Y_OFFSET");
+        ARROW_ATTACK_VOLLEYS_PER_POSITION = configInt("ARROW_ATTACK_VOLLEYS_PER_POSITION");
+        ARROW_ATTACK_ARROWS_PER_VOLLEY = configInt("ARROW_ATTACK_ARROWS_PER_VOLLEY");
         ARROW_ATTACK_PREPARE_TIME = configInt("ARROW_ATTACK_PREPARE_TIME");
+        ARROW_ATTACK_VOLLEY_INTERVAL = configInt("ARROW_ATTACK_VOLLEY_INTERVAL");
+        ARROW_ATTACK_SPREAD_DEGREES = configInt("ARROW_ATTACK_SPREAD_DEGREES");
+        ARROW_ATTACK_SPEED = configFloat("ARROW_ATTACK_SPEED");
+        ARROW_ATTACK_INACCURACY = configFloat("ARROW_ATTACK_INACCURACY");
+        ARROW_ATTACK_RECOVERY_TIME = configInt("ARROW_ATTACK_RECOVERY_TIME");
+        ARROW_ATTACK_DIFFICULTY_TWO_REST_TIME = configInt("ARROW_ATTACK_DIFFICULTY_TWO_REST_TIME");
+        ARROW_ATTACK_DRUM_ROUNDS = configInt("ARROW_ATTACK_DRUM_ROUNDS");
         ARROW_ATTACK_DRUM_INTERVAL = configInt("ARROW_ATTACK_DRUM_INTERVAL");
         ARROW_ATTACK_DRUM_COUNT = configInt("ARROW_ATTACK_DRUM_COUNT");
         ARROW_ATTACK_DRUM_THROW_SPEED = configFloat("ARROW_ATTACK_DRUM_THROW_SPEED");
         ARROW_ATTACK_DRUM_THROW_HEIGHT = configFloat("ARROW_ATTACK_DRUM_THROW_HEIGHT");
-        ARROW_ATTACK_RAIN_INTERVAL = configInt("ARROW_ATTACK_RAIN_INTERVAL");
-        ARROW_ATTACK_RAIN_COUNT = configInt("ARROW_ATTACK_RAIN_COUNT");
-        ARROW_ATTACK_RAIN_MAX_HEIGHT = configInt("ARROW_ATTACK_RAIN_MAX_HEIGHT");
-        ARROW_ATTACK_RAIN_HORIZONTAL_SPREAD = configFloat("ARROW_ATTACK_RAIN_HORIZONTAL_SPREAD");
-        ARROW_ATTACK_RAIN_VERTICAL_SPREAD = configFloat("ARROW_ATTACK_RAIN_VERTICAL_SPREAD");
-        ARROW_ATTACK_RAIN_MIN_SPEED = configFloat("ARROW_ATTACK_RAIN_MIN_SPEED");
-        ARROW_ATTACK_RAIN_SPEED_VARIANCE = configFloat("ARROW_ATTACK_RAIN_SPEED_VARIANCE");
-        ARROW_ATTACK_RAIN_INACCURACY = configFloat("ARROW_ATTACK_RAIN_INACCURACY");
-        ARROW_ATTACK_DIFFICULTY_TWO_REST_TIME = configInt("ARROW_ATTACK_DIFFICULTY_TWO_REST_TIME");
         WATER_SPEAR_CENTER_WAVES = configInt("WATER_SPEAR_CENTER_WAVES");
         WATER_SPEAR_CENTER_SPEARS_PER_WAVE = configInt("WATER_SPEAR_CENTER_SPEARS_PER_WAVE");
         WATER_SPEAR_CENTER_INTERVAL = configInt("WATER_SPEAR_CENTER_INTERVAL");
@@ -631,7 +642,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         MUTANT_LEVIATHAN_LASER_PORTAL_LIFESPAN_BUFFER = configInt("MUTANT_LEVIATHAN_LASER_PORTAL_LIFESPAN_BUFFER");
         MAGNETIC_ATTACK_DAMAGE = NORMAL_ATTACK_DAMAGE;
         PEPPERMINT_DAMAGE = NORMAL_ATTACK_DAMAGE;
-        ARROW_ATTACK_RAIN_DAMAGE = NORMAL_ATTACK_DAMAGE;
+        ARROW_ATTACK_DAMAGE = NORMAL_ATTACK_DAMAGE;
         WATER_SPEAR_CENTER_DAMAGE = NORMAL_ATTACK_DAMAGE;
         WATER_SPEAR_PARALLEL_DAMAGE = NORMAL_ATTACK_DAMAGE;
         LASER_SPREAD_DAMAGE = NORMAL_ATTACK_DAMAGE;
@@ -676,6 +687,10 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         return FLARE_BOMB_JET_DAMAGE;
     }
 
+    public float getWaterWaveDamage() {
+        return NORMAL_ATTACK_DAMAGE;
+    }
+
     @Override
     public void move(MoverType typeIn, Vec3 pos) {
         super.move(typeIn, pos);
@@ -698,7 +713,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         goalSelector.addGoal(2, new NormalDashAttack(this));
         goalSelector.addGoal(3, new HowitzerAttack(this));
         goalSelector.addGoal(3, new MagneticAttack(this));
-        goalSelector.addGoal(4, new WaterBoltAttack(this));
+        goalSelector.addGoal(4, new WaterAttack(this));
         goalSelector.addGoal(5, new PeppermintAttack(this));
         goalSelector.addGoal(6, new DinosaurAttack(this));
         goalSelector.addGoal(7, new ArrowAttack(this));
@@ -752,7 +767,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
     @Override
     public SpawnGroupData finalizeSpawn(ServerLevelAccessor worldIn, DifficultyInstance difficultyIn, MobSpawnType reason, @Nullable SpawnGroupData spawnDataIn, @Nullable CompoundTag dataTag) {
         SpawnGroupData result = super.finalizeSpawn(worldIn, difficultyIn, reason, spawnDataIn, dataTag);
-        stage = PHASE_1;
+        phase = PHASE_1;
         phaseTimer = 0;
         pendingActivePhase = -1;
         phaseStartAlignmentState = 0;
@@ -777,32 +792,61 @@ public class MutantEntity extends BossEntity implements PowerableMob {
     @Override
     public boolean hurt(DamageSource source, float amount) {
         if (source.is(DamageTypes.GENERIC_KILL)) {
-            stage = DEATH_PHASE;
+            phase = DEATH_PHASE;
             pendingActivePhase = -1;
             setInvulnerable(false);
             setPowered(false);
             return super.hurt(source, amount);
         }
-        if (stage == PHASE_1_TRANSITION || stage == PHASE_2_TRANSITION || stage == PHASE_3_TRANSITION
-                || (stage == PHASE_4 && !waitingForFinalHit)) {
-            return false;
-        }
-        if (stage == PHASE_1 && getHealth() - amount <= getMaxHealth() * (2.0F / 3.0F)) {
-            setHealth(getMaxHealth() * (2.0F / 3.0F));
-            beginPhase1Transition();
-            return false;
-        }
-        if (stage == PHASE_2 && getHealth() - amount <= getMaxHealth() / 3.0F) {
-            setHealth(getMaxHealth() / 3.0F);
-            beginPhase2Transition();
-            return false;
-        }
-        if (stage == PHASE_3 && getHealth() - amount <= 1.0F) {
-            setHealth(1.0F);
-            beginPhase3Transition();
+        if (phase == PHASE_1_TRANSITION || phase == PHASE_2_TRANSITION || phase == PHASE_3_TRANSITION
+                || (phase == PHASE_4 && !waitingForFinalHit)) {
             return false;
         }
         return super.hurt(source, amount);
+    }
+
+    @Override
+    public void setHealth(float health) {
+        if (phaseHealthProtectionEnabled && !level().isClientSide && phase != DEATH_PHASE && !waitingForFinalHit) {
+            if (Float.isNaN(health)) {
+                health = getHealth();
+            }
+            if (phase == PHASE_1_TRANSITION || phase == PHASE_2_TRANSITION || phase == PHASE_3_TRANSITION
+                    || phase == PHASE_4) {
+                health = Math.max(health, Math.max(1.0F, getHealth()));
+            }
+            // Check the final health, after Forge damage events, armor, and resistance.
+            else if (phase == PHASE_1 && health <= getMaxHealth() * (2.0F / 3.0F)) {
+                health = getMaxHealth() * (2.0F / 3.0F);
+                beginPhase1Transition();
+            }
+            else if (phase == PHASE_2 && health <= getMaxHealth() / 3.0F) {
+                health = getMaxHealth() / 3.0F;
+                beginPhase2Transition();
+            }
+            else if (phase == PHASE_3 && health <= 1.0F) {
+                health = 1.0F;
+                beginPhase3Transition();
+            }
+        }
+        super.setHealth(health);
+    }
+
+    @Override
+    public void die(DamageSource source) {
+        if (source.is(DamageTypes.GENERIC_KILL)) {
+            phase = DEATH_PHASE;
+            pendingActivePhase = -1;
+            setInvulnerable(false);
+            setPowered(false);
+            super.setHealth(0.0F);
+        }
+        else if (phaseHealthProtectionEnabled && !level().isClientSide && phase != DEATH_PHASE && !waitingForFinalHit) {
+            // Some weapons call die directly instead of going through hurt.
+            setHealth(0.0F);
+            return;
+        }
+        super.die(source);
     }
 
     @Override
@@ -812,17 +856,17 @@ public class MutantEntity extends BossEntity implements PowerableMob {
             super.customServerAiStep();
             return;
         }
-        if (stage == PHASE_1 && getHealth() <= getMaxHealth() * (2.0F / 3.0F)) {
+        if (phase == PHASE_1 && getHealth() <= getMaxHealth() * (2.0F / 3.0F)) {
             beginPhase1Transition();
         }
-        else if (stage == PHASE_2 && getHealth() <= getMaxHealth() / 3.0F) {
+        else if (phase == PHASE_2 && getHealth() <= getMaxHealth() / 3.0F) {
             beginPhase2Transition();
         }
-        else if (stage == PHASE_3 && getHealth() <= 1.0F) {
+        else if (phase == PHASE_3 && getHealth() <= 1.0F) {
             beginPhase3Transition();
         }
 
-        if (stage == PHASE_1_TRANSITION || stage == PHASE_2_TRANSITION || stage == PHASE_3_TRANSITION) {
+        if (phase == PHASE_1_TRANSITION || phase == PHASE_2_TRANSITION || phase == PHASE_3_TRANSITION) {
             if (pendingActivePhase >= 0) {
                 updatePhaseStartAlignment();
             }
@@ -834,8 +878,8 @@ public class MutantEntity extends BossEntity implements PowerableMob {
     }
 
     private void updatePoweredState() {
-        boolean powered = stage == PHASE_1_TRANSITION || stage == PHASE_2_TRANSITION
-                || stage == PHASE_3_TRANSITION || (stage == PHASE_4 && !waitingForFinalHit);
+        boolean powered = phase == PHASE_1_TRANSITION || phase == PHASE_2_TRANSITION
+                || phase == PHASE_3_TRANSITION || (phase == PHASE_4 && !waitingForFinalHit);
         setPowered(powered);
         setInvulnerable(powered);
     }
@@ -853,7 +897,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
     }
 
     private void beginTransition(int transitionPhase) {
-        stage = transitionPhase;
+        phase = transitionPhase;
         phaseTimer = TRANSITION_TIME;
         pendingActivePhase = -1;
         setInvulnerable(true);
@@ -861,14 +905,14 @@ public class MutantEntity extends BossEntity implements PowerableMob {
     }
 
     private void finishTransition() {
-        if (stage == PHASE_1_TRANSITION) {
+        if (phase == PHASE_1_TRANSITION) {
             beginPhaseStartAlignment(PHASE_2);
         }
-        else if (stage == PHASE_2_TRANSITION) {
+        else if (phase == PHASE_2_TRANSITION) {
             beginPhaseStartAlignment(PHASE_3);
         }
-        else if (stage == PHASE_3_TRANSITION) {
-            stage = PHASE_4;
+        else if (phase == PHASE_3_TRANSITION) {
+            phase = PHASE_4;
             phaseTimer = 0;
             setHealth(1.0F);
             setInvulnerable(true);
@@ -912,7 +956,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         int nextPhase = pendingActivePhase;
         pendingActivePhase = -1;
         phaseStartAlignmentState = 0;
-        stage = nextPhase;
+        phase = nextPhase;
         phaseTimer = 0;
         setHealth(getMaxHealth());
         setInvulnerable(false);
@@ -929,7 +973,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
     }
 
     private void finishPhaseFourAttack() {
-        if (stage != PHASE_4 || waitingForFinalHit) {
+        if (phase != PHASE_4 || waitingForFinalHit) {
             return;
         }
 
@@ -1054,8 +1098,15 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
     @Override
     public void readAdditionalSaveData(CompoundTag compound) {
-        super.readAdditionalSaveData(compound);
-        stage = compound.getInt("Phase");
+        boolean protectHealth = phaseHealthProtectionEnabled;
+        phaseHealthProtectionEnabled = false;
+        try {
+            super.readAdditionalSaveData(compound);
+        }
+        finally {
+            phaseHealthProtectionEnabled = protectHealth;
+        }
+        phase = compound.getInt("Phase");
         entityData.set(BOSS_DIFFICULTY, Mth.clamp(compound.getInt("BossDifficulty"), 0, 2));
         applyDifficultySettings();
         applyDifficultyHealth(false);
@@ -1083,12 +1134,13 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         waterArenaCenter = new Vec3(compound.getDouble("WaterArenaCenterX"), compound.getDouble("WaterArenaCenterY"), compound.getDouble("WaterArenaCenterZ"));
         entityData.set(MUSIC_PHASE, getMusicPhaseForStage());
         updatePoweredState();
+        setHealth(getHealth());
     }
 
     @Override
     public void addAdditionalSaveData(CompoundTag compound) {
         super.addAdditionalSaveData(compound);
-        compound.putInt("Phase", stage);
+        compound.putInt("Phase", phase);
         compound.putInt("BossDifficulty", getBossDifficulty());
         compound.putInt("PhaseTimer", phaseTimer);
         compound.putInt("PendingActivePhase", pendingActivePhase);
@@ -1147,13 +1199,13 @@ public class MutantEntity extends BossEntity implements PowerableMob {
     }
 
     private int getMusicPhaseForStage() {
-        if (stage == PHASE_4) {
+        if (phase == PHASE_4) {
             return 4;
         }
-        if (stage == PHASE_3 || stage == PHASE_3_TRANSITION) {
+        if (phase == PHASE_3 || phase == PHASE_3_TRANSITION) {
             return 3;
         }
-        if (stage == PHASE_2 || stage == PHASE_2_TRANSITION) {
+        if (phase == PHASE_2 || phase == PHASE_2_TRANSITION) {
             return 2;
         }
         return 1;
@@ -1179,13 +1231,13 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public boolean canUse() {
-            return mutant.stage == PHASE_1 && mutant.nextPhaseOneAttack == ATTACK_NORMAL_SHOOTING
+            return mutant.phase == PHASE_1 && mutant.nextPhaseOneAttack == ATTACK_NORMAL_SHOOTING
                     && mutant.getTarget() != null && mutant.getTarget().isAlive();
         }
 
         @Override
         public boolean canContinueToUse() {
-            return mutant.stage == PHASE_1 && target != null && target.isAlive()
+            return mutant.phase == PHASE_1 && target != null && target.isAlive()
                     && (preparationTimer > 0 || shotsRemaining > 0);
         }
 
@@ -1264,13 +1316,13 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public boolean canUse() {
-            return mutant.stage == PHASE_1 && mutant.nextPhaseOneAttack == ATTACK_NORMAL_DASH
+            return mutant.phase == PHASE_1 && mutant.nextPhaseOneAttack == ATTACK_NORMAL_DASH
                     && mutant.getTarget() != null && mutant.getTarget().isAlive();
         }
 
         @Override
         public boolean canContinueToUse() {
-            return mutant.stage == PHASE_1 && target != null && target.isAlive() && attackPhase != PHASE_DONE;
+            return mutant.phase == PHASE_1 && target != null && target.isAlive() && attackPhase != PHASE_DONE;
         }
 
         @Override
@@ -1384,13 +1436,13 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public boolean canUse() {
-            return mutant.stage == PHASE_1 && mutant.nextPhaseOneAttack == ATTACK_NORMAL_HOWITZER
+            return mutant.phase == PHASE_1 && mutant.nextPhaseOneAttack == ATTACK_NORMAL_HOWITZER
                     && mutant.getTarget() != null && mutant.getTarget().isAlive();
         }
 
         @Override
         public boolean canContinueToUse() {
-            return mutant.stage == PHASE_1 && target != null && target.isAlive() && !fired;
+            return mutant.phase == PHASE_1 && target != null && target.isAlive() && !fired;
         }
 
         @Override
@@ -1435,13 +1487,15 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
     private class MagneticAttack extends Goal {
         private final MutantEntity mutant;
+        private final List<MutantMagneticWeaponEntity> weapons = new ArrayList<>();
         @Nullable
         private LivingEntity target;
-        @Nullable
-        private MutantMagneticWeaponEntity weapon;
+        private Vec3 stationaryPosition = Vec3.ZERO;
         private int timer;
         private int preparationTimer;
+        private int spawnTimer;
         private double groundY;
+        private boolean yAligned;
         private boolean grounded;
 
         private MagneticAttack(MutantEntity mutant) {
@@ -1456,13 +1510,13 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public boolean canUse() {
-            return mutant.stage == PHASE_2 && mutant.nextPhaseTwoAttack == ATTACK_PHASE_TWO_MAGNETIC
+            return mutant.phase == PHASE_2 && mutant.nextPhaseTwoAttack == ATTACK_PHASE_TWO_MAGNETIC
                     && mutant.getTarget() != null && mutant.getTarget().isAlive();
         }
 
         @Override
         public boolean canContinueToUse() {
-            return mutant.stage == PHASE_2 && target != null && target.isAlive() && timer > 0;
+            return mutant.phase == PHASE_2 && target != null && target.isAlive() && timer > 0;
         }
 
         @Override
@@ -1470,89 +1524,138 @@ public class MutantEntity extends BossEntity implements PowerableMob {
             target = mutant.getTarget();
             timer = MAGNETIC_ATTACK_DURATION;
             preparationTimer = MAGNETIC_ATTACK_PREPARE_TIME;
-            weapon = null;
-            groundY = findGroundY();
+            spawnTimer = 0;
+            weapons.clear();
+            stationaryPosition = mutant.position();
+            groundY = mutant.getY();
+            yAligned = false;
             grounded = false;
+            mutant.getNavigation().stop();
+            mutant.setDeltaMovement(Vec3.ZERO);
+            mutant.getMoveControl().setWantedPosition(mutant.getX(), mutant.getY(), mutant.getZ(), 1.0D);
         }
 
-        private void spawnWeapon() {
-            weapon = new MutantMagneticWeaponEntity(ModEntities.MUTANT_MAGNETIC_WEAPON.get(), mutant.level());
-            weapon.setItemStack(new ItemStack(Items.NETHERITE_SWORD));
-            weapon.setMutantController(mutant);
-            weapon.setAttackTarget(target);
-            weapon.setAttackDamage(MAGNETIC_ATTACK_DAMAGE);
-            weapon.configureAttack(MAGNETIC_WEAPON_CHASE_SPEED, MAGNETIC_WEAPON_HIT_DISTANCE, MAGNETIC_WEAPON_HIT_COOLDOWN,
-                    MAGNETIC_WEAPON_RANGE_PARTICLE_INTERVAL, MAGNETIC_WEAPON_RANGE_PARTICLE_POINTS,
-                    MAGNETIC_WEAPON_RANGE_PARTICLE_HEIGHT);
-            weapon.setPos(mutant.getX(), mutant.getY() + MAGNETIC_WEAPON_HEIGHT, mutant.getZ());
-            mutant.level().addFreshEntity(weapon);
+        private void spawnWeapons() {
+            double radius = RESTRICTION_BOUNDARY_RADIUS + Math.max(1.0D, MAGNETIC_WEAPON_SPAWN_OFFSET);
+            for (int i = 0; i < MAGNETIC_WEAPONS_PER_SPAWN; i++) {
+                double angle = mutant.getRandom().nextDouble() * Math.PI * 2.0D;
+                Item item = MAGNETIC_WEAPON_ITEMS.get(mutant.getRandom().nextInt(MAGNETIC_WEAPON_ITEMS.size()));
+                MutantMagneticWeaponEntity weapon = new MutantMagneticWeaponEntity(
+                        ModEntities.MUTANT_MAGNETIC_WEAPON.get(), mutant.level());
+                weapon.setItemStack(new ItemStack(item));
+                weapon.setMutantController(mutant);
+                weapon.configureFlight(MAGNETIC_WEAPON_SPEED, MAGNETIC_ATTACK_DAMAGE, MAGNETIC_WEAPON_HEIGHT, timer);
+                weapon.setPos(stationaryPosition.x + Math.cos(angle) * radius,
+                        stationaryPosition.y + MAGNETIC_WEAPON_HEIGHT, stationaryPosition.z + Math.sin(angle) * radius);
+                mutant.level().addFreshEntity(weapon);
+                weapons.add(weapon);
+            }
         }
 
         @Override
         public void tick() {
-            if (target != null) {
-                mutant.getLookControl().setLookAt(target, NORMAL_ATTACK_LOOK_LIMIT, NORMAL_ATTACK_LOOK_LIMIT);
+            if (target == null) {
+                return;
+            }
+            mutant.getLookControl().setLookAt(target, NORMAL_ATTACK_LOOK_LIMIT, NORMAL_ATTACK_LOOK_LIMIT);
+            if (!yAligned) {
+                mutant.getMoveControl().setWantedPosition(stationaryPosition.x, target.getY(), stationaryPosition.z, 1.0D);
+                if (Math.abs(mutant.getY() - target.getY()) <= mutant.getBoundingBox().getSize()) {
+                    mutant.setPos(stationaryPosition.x, target.getY(), stationaryPosition.z);
+                    mutant.setDeltaMovement(Vec3.ZERO);
+                    yAligned = true;
+                    groundY = mutant.findGroundY();
+                }
+                return;
             }
             if (!grounded) {
-                mutant.getMoveControl().setWantedPosition(mutant.getX(), groundY, mutant.getZ(), 1.0D);
+                mutant.getMoveControl().setWantedPosition(stationaryPosition.x, groundY, stationaryPosition.z, 1.0D);
                 if (Math.abs(mutant.getY() - groundY) <= mutant.getBoundingBox().getSize()) {
+                    stationaryPosition = new Vec3(stationaryPosition.x, groundY, stationaryPosition.z);
+                    mutant.setPos(stationaryPosition);
                     grounded = true;
                     mutant.setDeltaMovement(Vec3.ZERO);
                 }
                 return;
             }
 
+            mutant.setPos(stationaryPosition);
             mutant.setDeltaMovement(Vec3.ZERO);
-            mutant.getMoveControl().setWantedPosition(mutant.getX(), mutant.getY(), mutant.getZ(), 1.0D);
+            mutant.getMoveControl().setWantedPosition(stationaryPosition.x, stationaryPosition.y, stationaryPosition.z, 1.0D);
             if (preparationTimer > 0) {
                 preparationTimer--;
                 return;
             }
 
-            if (weapon == null) {
-                spawnWeapon();
+            pullPlayers();
+            weapons.removeIf(MutantMagneticWeaponEntity::isRemoved);
+            if (--spawnTimer <= 0) {
+                spawnWeapons();
+                spawnTimer = Math.max(1, MAGNETIC_WEAPON_SPAWN_INTERVAL);
             }
             timer--;
         }
 
-        private double findGroundY() {
-            BlockPos position = mutant.blockPosition();
-            while (position.getY() > mutant.level().getMinBuildHeight()) {
-                if (mutant.level().getBlockState(position.below()).blocksMotion()) {
-                    return position.getY();
+        private void pullPlayers() {
+            double radius = RESTRICTION_BOUNDARY_RADIUS;
+            AABB arena = new AABB(stationaryPosition, stationaryPosition).inflate(radius);
+            for (Player player : mutant.level().getEntitiesOfClass(Player.class, arena,
+                    player -> player.isAlive() && !player.isSpectator() && !player.getAbilities().invulnerable
+                            && !mutant.isAlliedTo(player))) {
+                Vec3 towardBoss = stationaryPosition.subtract(player.position()).multiply(1.0D, 0.0D, 1.0D);
+                double distance = towardBoss.length();
+                if (distance < 1.0E-4D || distance > radius) {
+                    continue;
                 }
-                position = position.below();
+                double strength = Math.min(distance * Math.max(0.0F, MAGNETIC_PLAYER_PULL_PER_BLOCK),
+                        Math.max(0.0F, MAGNETIC_PLAYER_MAX_PULL));
+                if (strength > 0.0D) {
+                    player.setDeltaMovement(player.getDeltaMovement().add(towardBoss.scale(strength / distance)));
+                    player.hurtMarked = true;
+                }
             }
-            return mutant.getY();
         }
 
         @Override
         public void stop() {
-            if (weapon != null && !weapon.isRemoved()) {
-                weapon.discard();
+            for (MutantMagneticWeaponEntity weapon : weapons) {
+                if (!weapon.isRemoved()) {
+                    weapon.discard();
+                }
             }
-            weapon = null;
+            weapons.clear();
+            mutant.setDeltaMovement(Vec3.ZERO);
+            mutant.getMoveControl().setWantedPosition(mutant.getX(), mutant.getY(), mutant.getZ(), 1.0D);
             target = null;
             mutant.selectNextPhaseTwoAttack(ATTACK_PHASE_TWO_MAGNETIC);
         }
     }
 
-    private class WaterBoltAttack extends Goal {
+    private class WaterAttack extends Goal {
+        private static final int PHASE_ALIGN = 0;
+        private static final int PHASE_DESCEND = 1;
+        private static final int PHASE_PREPARE = 2;
+        private static final int PHASE_DASH = 3;
+        private static final int PHASE_RECOVER = 4;
+        private static final int PHASE_RETURN = 5;
+        private static final int PHASE_DONE = 6;
+
         private final MutantEntity mutant;
-        private final List<WaterBoltEntity> spawnedWaterBolts = new ArrayList<>();
+        private final List<WaveEntity> spawnedWaves = new ArrayList<>();
         @Nullable
         private LivingEntity target;
         private Vec3 arenaCenter = Vec3.ZERO;
-        private int positionsRemaining;
-        private int volleysRemaining;
-        private int preparationTimer;
-        private int volleyTimer;
-        private boolean finished;
+        private Vec3 dashDirection = Vec3.ZERO;
+        private Vec3 previousDashPosition = Vec3.ZERO;
+        private ItemStack previousMainHand = ItemStack.EMPTY;
+        private double groundY;
+        private int attackPhase;
+        private int timer;
+        private int waveTimer;
+        private int dashesRemaining;
         private boolean ringDetached;
-        @Nullable
-        private Vec3 previousTeleportPosition;
 
-        private WaterBoltAttack(MutantEntity mutant) {
+        private WaterAttack(MutantEntity mutant) {
             this.mutant = mutant;
             setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK));
         }
@@ -1564,142 +1667,185 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public boolean canUse() {
-            return mutant.stage == PHASE_2 && mutant.nextPhaseTwoAttack == ATTACK_PHASE_TWO_WATER_BOLT
+            return mutant.phase == PHASE_2 && mutant.nextPhaseTwoAttack == ATTACK_PHASE_TWO_WATER
                     && mutant.getTarget() != null && mutant.getTarget().isAlive();
         }
 
         @Override
         public boolean canContinueToUse() {
-            return mutant.stage == PHASE_2 && target != null && target.isAlive() && !finished;
+            return mutant.phase == PHASE_2 && target != null && target.isAlive() && attackPhase != PHASE_DONE;
         }
 
         @Override
         public void start() {
             target = mutant.getTarget();
             arenaCenter = mutant.position();
-            positionsRemaining = WATER_BOLT_ATTACK_POSITIONS;
-            finished = false;
+            groundY = mutant.getY();
+            attackPhase = PHASE_ALIGN;
+            timer = WATER_ATTACK_PREPARE_TIME;
+            dashesRemaining = Math.max(0, WATER_DASH_COUNT);
             ringDetached = false;
-            previousTeleportPosition = null;
-            spawnedWaterBolts.clear();
-            detachRestrictionRing();
-            if (!beginNextPosition()) {
-                finished = true;
-            }
+            spawnedWaves.clear();
+            previousMainHand = mutant.getMainHandItem().copy();
+            mutant.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(ACItemRegistry.ORTHOLANCE.get()));
+            mutant.getNavigation().stop();
+            holdStill();
         }
 
         @Override
         public void tick() {
             if (target == null) {
-                finished = true;
+                attackPhase = PHASE_DONE;
                 return;
             }
 
+            spawnedWaves.removeIf(WaveEntity::isRemoved);
+            switch (attackPhase) {
+                case PHASE_ALIGN -> alignToTargetY();
+                case PHASE_DESCEND -> descendToGround();
+                case PHASE_PREPARE -> prepare();
+                case PHASE_DASH -> dash();
+                case PHASE_RECOVER -> recover();
+                case PHASE_RETURN -> returnToArena();
+                default -> {
+                }
+            }
+        }
+
+        private void alignToTargetY() {
+            mutant.getLookControl().setLookAt(target, NORMAL_ATTACK_LOOK_LIMIT, NORMAL_ATTACK_LOOK_LIMIT);
+            mutant.getMoveControl().setWantedPosition(arenaCenter.x, target.getY(), arenaCenter.z, 1.0D);
+            if (Math.abs(mutant.getY() - target.getY()) <= mutant.getBoundingBox().getSize()) {
+                mutant.setPos(arenaCenter.x, target.getY(), arenaCenter.z);
+                mutant.setDeltaMovement(Vec3.ZERO);
+                groundY = mutant.findGroundY();
+                attackPhase = PHASE_DESCEND;
+            }
+        }
+
+        private void descendToGround() {
+            mutant.getMoveControl().setWantedPosition(arenaCenter.x, groundY, arenaCenter.z, 1.0D);
+            if (Math.abs(mutant.getY() - groundY) <= mutant.getBoundingBox().getSize()) {
+                arenaCenter = new Vec3(arenaCenter.x, groundY, arenaCenter.z);
+                mutant.setPos(arenaCenter);
+                holdStill();
+                detachRestrictionRing();
+                attackPhase = PHASE_PREPARE;
+            }
+        }
+
+        private void prepare() {
+            holdStill();
+            mutant.getLookControl().setLookAt(target, NORMAL_ATTACK_LOOK_LIMIT, NORMAL_ATTACK_LOOK_LIMIT);
+            if (--timer <= 0) {
+                beginDash();
+            }
+        }
+
+        private void beginDash() {
+            if (dashesRemaining <= 0) {
+                attackPhase = PHASE_RETURN;
+                return;
+            }
+            dashDirection = target.position().subtract(mutant.position()).multiply(1.0D, 0.0D, 1.0D).normalize();
+            if (dashDirection.lengthSqr() < 1.0E-4D) {
+                dashDirection = mutant.getLookAngle().multiply(1.0D, 0.0D, 1.0D).normalize();
+                if (dashDirection.lengthSqr() < 1.0E-4D) {
+                    dashDirection = new Vec3(0.0D, 0.0D, 1.0D);
+                }
+            }
+            previousDashPosition = mutant.position();
+            dashesRemaining--;
+            timer = Math.max(1, WATER_DASH_DURATION);
+            waveTimer = 0;
+            attackPhase = PHASE_DASH;
+            mutant.playSound(ACSoundRegistry.ORTHOLANCE_WAVE.get(), 2.0F, 1.0F);
+        }
+
+        private void dash() {
+            hurtDashContacts();
+            if (timer <= 0) {
+                holdStill();
+                timer = Math.max(0, WATER_DASH_RECOVER_TIME);
+                attackPhase = PHASE_RECOVER;
+                return;
+            }
+
+            mutant.setDeltaMovement(dashDirection.scale(WATER_DASH_SPEED));
+            float yaw = (float) -Math.toDegrees(Math.atan2(dashDirection.x, dashDirection.z));
+            mutant.setYRot(yaw);
+            mutant.setYHeadRot(yaw);
+            mutant.yBodyRot = yaw;
+            mutant.getLookControl().setLookAt(mutant.getX() + dashDirection.x * 10.0D, mutant.getEyeY(),
+                    mutant.getZ() + dashDirection.z * 10.0D, NORMAL_ATTACK_LOOK_LIMIT, NORMAL_ATTACK_LOOK_LIMIT);
+            if (--waveTimer <= 0) {
+                spawnSideWaves(yaw);
+                waveTimer = Math.max(1, WATER_WAVE_INTERVAL);
+            }
+            timer--;
+        }
+
+        private void hurtDashContacts() {
+            Vec3 end = mutant.getBoundingBox().getCenter();
+            Vec3 movement = mutant.position().subtract(previousDashPosition);
+            Vec3 start = end.subtract(movement);
+            double contactRange = Math.max(0.0F, WATER_DASH_CONTACT_RANGE);
+            AABB searchArea = mutant.getBoundingBox().inflate(contactRange).expandTowards(movement.scale(-1.0D));
+            for (LivingEntity entity : mutant.level().getEntitiesOfClass(LivingEntity.class, searchArea,
+                    entity -> entity != mutant && entity.isAlive() && !mutant.isAlliedTo(entity))) {
+                AABB contactBox = entity.getBoundingBox().inflate(mutant.getBbWidth() * 0.5D + contactRange,
+                        mutant.getBbHeight() * 0.5D + contactRange, mutant.getBbWidth() * 0.5D + contactRange);
+                if (contactBox.contains(start) || contactBox.clip(start, end).isPresent()) {
+                    entity.hurt(mutant.damageSources().mobAttack(mutant), NORMAL_ATTACK_DAMAGE);
+                }
+            }
+            previousDashPosition = mutant.position();
+        }
+
+        private void spawnSideWaves(float dashYaw) {
+            Vec3 left = new Vec3(-dashDirection.z, 0.0D, dashDirection.x);
+            double sideOffset = mutant.getBbWidth() * 0.5D + Math.max(0.0F, WATER_WAVE_SIDE_OFFSET);
+            // Ortholance's paired waves use opposite yaw offsets from the dash direction.
+            for (int side = -1; side <= 1; side += 2) {
+                Vec3 position = mutant.position().add(left.scale(side * sideOffset));
+                WaveEntity wave = new WaveEntity(mutant.level(), mutant);
+                wave.setPos(position);
+                wave.setLifespan(Math.max(1, WATER_WAVE_LIFESPAN));
+                wave.setWaveScale(Math.max(0.1F, WATER_WAVE_SCALE));
+                wave.setYRot(dashYaw + side * WATER_WAVE_SIDE_ANGLE);
+                mutant.level().addFreshEntity(wave);
+                spawnedWaves.add(wave);
+            }
+        }
+
+        private void recover() {
+            holdStill();
+            mutant.getLookControl().setLookAt(target, NORMAL_ATTACK_LOOK_LIMIT, NORMAL_ATTACK_LOOK_LIMIT);
+            if (timer > 0) {
+                timer--;
+                return;
+            }
+            if (dashesRemaining > 0) {
+                beginDash();
+            }
+            else if (spawnedWaves.isEmpty()) {
+                attackPhase = PHASE_RETURN;
+            }
+        }
+
+        private void returnToArena() {
+            mutant.getMoveControl().setWantedPosition(arenaCenter.x, arenaCenter.y, arenaCenter.z,
+                    Math.max(0.1F, WATER_RETURN_SPEED));
+            if (mutant.position().distanceTo(arenaCenter) <= mutant.getBoundingBox().getSize()) {
+                mutant.setPos(arenaCenter);
+                holdStill();
+                attackPhase = PHASE_DONE;
+            }
+        }
+
+        private void holdStill() {
             mutant.setDeltaMovement(Vec3.ZERO);
             mutant.getMoveControl().setWantedPosition(mutant.getX(), mutant.getY(), mutant.getZ(), 1.0D);
-            mutant.getLookControl().setLookAt(target, NORMAL_ATTACK_LOOK_LIMIT, NORMAL_ATTACK_LOOK_LIMIT);
-
-            if (preparationTimer > 0) {
-                preparationTimer--;
-                return;
-            }
-
-            if (volleysRemaining == 0) {
-                if (!beginNextPosition()) {
-                    finished = true;
-                }
-                return;
-            }
-
-            if (--volleyTimer > 0) {
-                return;
-            }
-
-            fireVolley();
-            volleysRemaining--;
-            if (volleysRemaining > 0) {
-                volleyTimer = WATER_BOLT_VOLLEY_INTERVAL;
-            }
-            else if (positionsRemaining > 0) {
-                if (!beginNextPosition()) {
-                    finished = true;
-                }
-            }
-            else {
-                finished = true;
-            }
-        }
-
-        private boolean beginNextPosition() {
-            Vec3 position = findNextTeleportPosition();
-            if (position == null) {
-                return false;
-            }
-
-            mutant.teleportTo(position.x, position.y, position.z);
-            mutant.setDeltaMovement(Vec3.ZERO);
-            previousTeleportPosition = position;
-            positionsRemaining--;
-            volleysRemaining = WATER_BOLT_VOLLEYS_PER_POSITION;
-            preparationTimer = WATER_BOLT_PREPARE_TIME;
-            volleyTimer = 0;
-            return true;
-        }
-
-        @Nullable
-        private Vec3 findNextTeleportPosition() {
-            double minimumDistance = 2.0D * Math.sin(Math.toRadians(60.0D)) * WATER_BOLT_DISTANCE;
-            double minimumDistanceSqr = minimumDistance * minimumDistance;
-            double y = target.getY() + WATER_BOLT_Y_OFFSET;
-            if (previousTeleportPosition == null) {
-                double angle = mutant.getRandom().nextDouble() * Math.PI * 2.0D;
-                return new Vec3(target.getX() + Math.cos(angle) * WATER_BOLT_DISTANCE, y,
-                        target.getZ() + Math.sin(angle) * WATER_BOLT_DISTANCE);
-            }
-
-            for (int attempt = 0; attempt < 32; attempt++) {
-                double angle = mutant.getRandom().nextDouble() * Math.PI * 2.0D;
-                Vec3 candidate = new Vec3(target.getX() + Math.cos(angle) * WATER_BOLT_DISTANCE, y,
-                        target.getZ() + Math.sin(angle) * WATER_BOLT_DISTANCE);
-                if (candidate.subtract(previousTeleportPosition).horizontalDistanceSqr() >= minimumDistanceSqr) {
-                    return candidate;
-                }
-            }
-
-            Vec3 fromTargetToPrevious = previousTeleportPosition.subtract(target.position()).multiply(1.0D, 0.0D, 1.0D);
-            if (fromTargetToPrevious.lengthSqr() > 1.0E-4D) {
-                Vec3 candidate = new Vec3(target.getX(), y, target.getZ())
-                        .subtract(fromTargetToPrevious.normalize().scale(WATER_BOLT_DISTANCE));
-                if (candidate.subtract(previousTeleportPosition).horizontalDistanceSqr() >= minimumDistanceSqr) {
-                    return candidate;
-                }
-
-                // A moving target can make the requested radius and separation mutually impossible.
-                // The far-side point preserves the attack's teleport radius and is the safest fallback.
-                return candidate;
-            }
-
-            double angle = mutant.getRandom().nextDouble() * Math.PI * 2.0D;
-            return new Vec3(target.getX() + Math.cos(angle) * WATER_BOLT_DISTANCE, y,
-                    target.getZ() + Math.sin(angle) * WATER_BOLT_DISTANCE);
-        }
-
-        private void fireVolley() {
-            int centerBolt = WATER_BOLT_BOLTS_PER_VOLLEY / 2;
-            for (int i = 0; i < WATER_BOLT_BOLTS_PER_VOLLEY; i++) {
-                WaterBoltEntity bolt = new WaterBoltEntity(mutant.level(), mutant);
-                Vec3 direction = target.getBoundingBox().getCenter().subtract(bolt.position()).normalize();
-                if (direction.lengthSqr() < 1.0E-4D) {
-                    direction = mutant.getLookAngle().normalize();
-                }
-                double angle = (i - centerBolt) * WATER_BOLT_SPREAD_DEGREES;
-                Vec3 boltDirection = direction.yRot((float) Math.toRadians(angle));
-                bolt.setNoGravity(true);
-                bolt.shoot(boltDirection.x, boltDirection.y, boltDirection.z,
-                        WATER_BOLT_SPEED, WATER_BOLT_INACCURACY);
-                mutant.level().addFreshEntity(bolt);
-                spawnedWaterBolts.add(bolt);
-            }
         }
 
         private void detachRestrictionRing() {
@@ -1726,8 +1872,9 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public void stop() {
-            mutant.selectNextPhaseTwoAttack(ATTACK_PHASE_TWO_WATER_BOLT);
-            boolean handOffToPeppermint = mutant.stage == PHASE_2 && target != null && target.isAlive()
+            mutant.selectNextPhaseTwoAttack(ATTACK_PHASE_TWO_WATER);
+            boolean handOffToPeppermint = ringDetached && mutant.isAlive() && mutant.phase == PHASE_2
+                    && target != null && target.isAlive()
                     && mutant.nextPhaseTwoAttack == ATTACK_PHASE_TWO_PEPPERMINT;
             if (handOffToPeppermint) {
                 mutant.waterArenaDetachedForPeppermint = true;
@@ -1737,13 +1884,14 @@ public class MutantEntity extends BossEntity implements PowerableMob {
                 mutant.waterArenaDetachedForPeppermint = false;
                 restoreRestrictionRing();
             }
-            for (WaterBoltEntity bolt : spawnedWaterBolts) {
-                if (!bolt.isRemoved()) {
-                    bolt.discard();
+            for (WaveEntity wave : spawnedWaves) {
+                if (!wave.isRemoved()) {
+                    wave.discard();
                 }
             }
-            spawnedWaterBolts.clear();
-            mutant.setDeltaMovement(Vec3.ZERO);
+            spawnedWaves.clear();
+            holdStill();
+            mutant.setItemSlot(EquipmentSlot.MAINHAND, previousMainHand);
             target = null;
         }
     }
@@ -1758,6 +1906,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         private int timer;
         private int preparationTimer;
         private int straightTimer;
+        private int straightRounds;
         private boolean ringDetached;
         private boolean attackStarted;
 
@@ -1773,21 +1922,25 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public boolean canUse() {
-            return mutant.stage == PHASE_2 && mutant.nextPhaseTwoAttack == ATTACK_PHASE_TWO_PEPPERMINT
+            return mutant.phase == PHASE_2 && mutant.nextPhaseTwoAttack == ATTACK_PHASE_TWO_PEPPERMINT
                     && mutant.getTarget() != null && mutant.getTarget().isAlive();
         }
 
         @Override
         public boolean canContinueToUse() {
-            return mutant.stage == PHASE_2 && target != null && target.isAlive() && timer > 0;
+            return mutant.phase == PHASE_2 && target != null && target.isAlive() && timer > 0;
         }
 
         @Override
         public void start() {
             target = mutant.getTarget();
-            timer = PEPPERMINT_ATTACK_DURATION;
+            PEPPERMINT_STRAIGHT_COUNT = configInt("PEPPERMINT_STRAIGHT_COUNT");
+            int interval = Math.max(1, PEPPERMINT_STRAIGHT_INTERVAL);
+            long firingDuration = (long) Math.max(0, PEPPERMINT_STRAIGHT_ROUNDS) * interval;
+            timer = (int) Math.min(Integer.MAX_VALUE, Math.max(PEPPERMINT_ATTACK_DURATION, firingDuration));
             preparationTimer = PEPPERMINT_ATTACK_PREPARE_TIME;
-            straightTimer = 0;
+            straightTimer = interval - 1;
+            straightRounds = 0;
             attackStarted = false;
             peppermints.clear();
             preparationPosition = choosePreparationPosition();
@@ -1830,13 +1983,14 @@ public class MutantEntity extends BossEntity implements PowerableMob {
                 if (!peppermint.isRemoved() && !peppermint.isStraight()) {
                     peppermint.setOrbitCenter(mutant.position());
                     peppermint.updateOrbitPosition();
-                    peppermint.damageContactsNow();
                 }
             }
 
-            if (++straightTimer >= PEPPERMINT_STRAIGHT_INTERVAL) {
+            if (straightRounds < PEPPERMINT_STRAIGHT_ROUNDS
+                    && ++straightTimer >= Math.max(1, PEPPERMINT_STRAIGHT_INTERVAL)) {
                 straightTimer = 0;
-                fireStraightPeppermints();
+                fireParallelPeppermints();
+                straightRounds++;
             }
             timer--;
         }
@@ -1854,7 +2008,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
                 float startAngle = i * 360.0F / count;
                 MutantSpinningPeppermintEntity peppermint = new MutantSpinningPeppermintEntity(
                         ModEntities.MUTANT_SPINNING_PEPPERMINT.get(), mutant.level());
-                peppermint.configure(radius, PEPPERMINT_SPIN_SPEED, startAngle, PEPPERMINT_ATTACK_DURATION,
+                peppermint.configure(radius, PEPPERMINT_SPIN_SPEED, startAngle, timer,
                         PEPPERMINT_DAMAGE, PEPPERMINT_HIT_RANGE);
                 peppermint.setOwner(mutant);
                 peppermint.setOrbitCenter(mutant.position());
@@ -1865,17 +2019,37 @@ public class MutantEntity extends BossEntity implements PowerableMob {
             }
         }
 
-        private void fireStraightPeppermints() {
-            Vec3 start = new Vec3(mutant.getX(), mutant.getY() + NORMAL_PROJECTILE_HEIGHT, mutant.getZ());
-            Vec3 direction = target.getBoundingBox().getCenter().subtract(start).normalize();
-            if (direction.lengthSqr() < 1.0E-4D) {
-                direction = mutant.getLookAngle().normalize();
+        private void fireParallelPeppermints() {
+            double radius = RESTRICTION_BOUNDARY_RADIUS;
+            if (PEPPERMINT_STRAIGHT_COUNT <= 0 || radius <= 0.0D) {
+                return;
             }
 
+            Vec3 targetPosition = target.getBoundingBox().getCenter();
+            Vec3 northeast = new Vec3(1.0D, 0.0D, -1.0D).normalize();
+            Vec3 lateral = new Vec3(-northeast.z, 0.0D, northeast.x);
+            double shiftRange = Math.min(Math.max(0.0F, PEPPERMINT_STRAIGHT_START_SHIFT), radius * 0.25D);
+            double startShift = (mutant.getRandom().nextDouble() * 2.0D - 1.0D) * shiftRange;
+            Vec3 launchCenter = new Vec3(arenaCenter.x, targetPosition.y, arenaCenter.z)
+                    .add(northeast.scale(Math.sqrt(radius * radius - startShift * startShift)))
+                    .add(lateral.scale(startShift));
+            Vec3 direction = targetPosition.subtract(launchCenter);
+            if (direction.lengthSqr() < 1.0E-4D) {
+                direction = northeast.scale(-1.0D);
+            }
+            direction = direction.normalize();
+            float yaw = 180.0F - (float) Math.toDegrees(Math.atan2(direction.x, direction.z));
+
             int centerPeppermint = PEPPERMINT_STRAIGHT_COUNT / 2;
+            int maximumLaneOffset = Math.max(centerPeppermint, PEPPERMINT_STRAIGHT_COUNT - 1 - centerPeppermint);
+            // Keep the entire volley near the northeast rim, even with oversized config values.
+            double spacing = Math.min(Math.max(0.0F, PEPPERMINT_STRAIGHT_SPACING),
+                    (radius * 0.5D - shiftRange) / (maximumLaneOffset + 1.0D));
             for (int i = 0; i < PEPPERMINT_STRAIGHT_COUNT; i++) {
-                float angle = (i - centerPeppermint) * PEPPERMINT_STRAIGHT_SPREAD_DEGREES;
-                Vec3 peppermintDirection = direction.yRot((float) Math.toRadians(angle));
+                double laneOffset = startShift + (i - centerPeppermint) * spacing;
+                double distanceToRim = Math.sqrt(Math.max(0.0D, radius * radius - laneOffset * laneOffset));
+                Vec3 start = new Vec3(arenaCenter.x, targetPosition.y, arenaCenter.z)
+                        .add(northeast.scale(distanceToRim)).add(lateral.scale(laneOffset));
                 MutantSpinningPeppermintEntity peppermint = new MutantSpinningPeppermintEntity(
                         ModEntities.MUTANT_SPINNING_PEPPERMINT.get(), mutant.level());
                 peppermint.configure(PEPPERMINT_SMALL_RING_RADIUS, PEPPERMINT_SPIN_SPEED, 0.0F, timer,
@@ -1884,7 +2058,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
                 peppermint.setStraight(true);
                 peppermint.setNoGravity(true);
                 peppermint.setPos(start);
-                peppermint.setYRot(180.0F - (float) (Math.atan2(peppermintDirection.x, peppermintDirection.z) * 180.0D / Math.PI));
+                peppermint.setYRot(yaw);
                 mutant.level().addFreshEntity(peppermint);
                 peppermints.add(peppermint);
             }
@@ -1928,26 +2102,24 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
     private class DinosaurAttack extends Goal {
         private static final int PHASE_PREPARE = 0;
-        private static final int PHASE_DASH = 1;
-        private static final int PHASE_RECOVER = 2;
-        private static final int PHASE_MOVE_TO_TOSS = 3;
-        private static final int PHASE_SPEAR_WINDUP = 4;
-        private static final int PHASE_WAIT_FOR_SPEAR = 5;
-        private static final int PHASE_RETURN_TO_RING = 6;
-        private static final int PHASE_DONE = 7;
+        private static final int PHASE_MOVE_TO_TOSS = 1;
+        private static final int PHASE_SPEAR_WINDUP = 2;
+        private static final int PHASE_WAIT_FOR_SPEAR = 3;
+        private static final int PHASE_RETURN_TO_RING = 4;
+        private static final int PHASE_DONE = 5;
 
         private final MutantEntity mutant;
         @Nullable
         private LivingEntity target;
         @Nullable
         private MutantExtinctionSpearEntity spear;
-        private Vec3 dashDirection = Vec3.ZERO;
         private Vec3 arenaCenter = Vec3.ZERO;
         private Vec3 tossPosition = Vec3.ZERO;
         private Vec3 spearTargetPosition = Vec3.ZERO;
+        private double previousTossAngle;
+        private int throwsRemaining;
         private int attackPhase;
         private int timer;
-        private int dashesRemaining;
         private boolean ringDetached;
 
         private DinosaurAttack(MutantEntity mutant) {
@@ -1962,13 +2134,13 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public boolean canUse() {
-            return mutant.stage == PHASE_2 && mutant.nextPhaseTwoAttack == ATTACK_PHASE_TWO_DINOSAUR
+            return mutant.phase == PHASE_2 && mutant.nextPhaseTwoAttack == ATTACK_PHASE_TWO_DINOSAUR
                     && mutant.getTarget() != null && mutant.getTarget().isAlive();
         }
 
         @Override
         public boolean canContinueToUse() {
-            return mutant.stage == PHASE_2 && target != null && target.isAlive() && attackPhase != PHASE_DONE;
+            return mutant.phase == PHASE_2 && target != null && target.isAlive() && attackPhase != PHASE_DONE;
         }
 
         @Override
@@ -1976,7 +2148,8 @@ public class MutantEntity extends BossEntity implements PowerableMob {
             target = mutant.getTarget();
             attackPhase = PHASE_PREPARE;
             timer = DINOSAUR_ATTACK_PREPARE_TIME;
-            dashesRemaining = DINOSAUR_DASH_COUNT;
+            throwsRemaining = Math.max(1, DINOSAUR_THROW_COUNT);
+            previousTossAngle = Double.NaN;
             ringDetached = false;
             spear = null;
             mutant.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(ACItemRegistry.EXTINCTION_SPEAR.get()));
@@ -1991,8 +2164,6 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
             switch (attackPhase) {
                 case PHASE_PREPARE -> prepare();
-                case PHASE_DASH -> dash();
-                case PHASE_RECOVER -> recover();
                 case PHASE_MOVE_TO_TOSS -> moveToTossPosition();
                 case PHASE_SPEAR_WINDUP -> windUpSpearThrow();
                 case PHASE_WAIT_FOR_SPEAR -> waitForSpear();
@@ -2006,75 +2177,32 @@ public class MutantEntity extends BossEntity implements PowerableMob {
             alignToTargetY();
             mutant.getLookControl().setLookAt(target, NORMAL_ATTACK_LOOK_LIMIT, NORMAL_ATTACK_LOOK_LIMIT);
             if (--timer <= 0) {
-                beginDash();
-            }
-        }
-
-        private void beginDash() {
-            if (!ringDetached) {
-                arenaCenter = mutant.position();
-                detachRestrictionRing();
-            }
-            Vec3 start = new Vec3(mutant.getX(), mutant.getY() + NORMAL_PROJECTILE_HEIGHT, mutant.getZ());
-            dashDirection = target.getBoundingBox().getCenter().subtract(start).normalize();
-            if (dashDirection.lengthSqr() < 1.0E-4D) {
-                dashDirection = mutant.getLookAngle().normalize();
-            }
-            dashesRemaining--;
-            timer = DINOSAUR_DASH_DURATION;
-            attackPhase = PHASE_DASH;
-        }
-
-        private void dash() {
-            mutant.setDeltaMovement(dashDirection.scale(DINOSAUR_DASH_SPEED));
-            mutant.getLookControl().setLookAt(target, NORMAL_ATTACK_LOOK_LIMIT, NORMAL_ATTACK_LOOK_LIMIT);
-            hurtDashContacts();
-            leaveDashTrail();
-            if (--timer <= 0) {
-                mutant.setDeltaMovement(Vec3.ZERO);
-                if (dashesRemaining > 0) {
-                    timer = DINOSAUR_DASH_RECOVER_TIME;
-                    attackPhase = PHASE_RECOVER;
-                }
-                else {
-                    beginToss();
-                }
-            }
-        }
-
-        private void recover() {
-            alignToTargetY();
-            if (--timer <= 0) {
-                beginDash();
-            }
-        }
-
-        private void hurtDashContacts() {
-            for (LivingEntity entity : mutant.level().getEntitiesOfClass(LivingEntity.class,
-                    mutant.getBoundingBox().inflate(DINOSAUR_DASH_CONTACT_RANGE),
-                    entity -> entity != mutant && entity.isAlive() && !mutant.isAlliedTo(entity))) {
-                entity.hurt(mutant.damageSources().mobAttack(mutant), NORMAL_ATTACK_DAMAGE);
-            }
-        }
-
-        private void leaveDashTrail() {
-            if (mutant.level() instanceof ServerLevel serverLevel) {
-                serverLevel.sendParticles(ACParticleRegistry.TEPHRA_FLAME.get(), mutant.getX(),
-                        mutant.getY() + NORMAL_PROJECTILE_HEIGHT, mutant.getZ(), DINOSAUR_DASH_TRAIL_PARTICLES,
-                        0.15D, 0.15D, 0.15D, 0.0D);
+                beginToss();
             }
         }
 
         private void beginToss() {
-            Vec3 awayFromTarget = mutant.position().subtract(target.position()).multiply(1.0D, 0.0D, 1.0D);
-            if (awayFromTarget.lengthSqr() < 1.0E-4D) {
-                double angle = mutant.getRandom().nextDouble() * Math.PI * 2.0D;
-                awayFromTarget = new Vec3(Math.cos(angle), 0.0D, Math.sin(angle));
+            if (!ringDetached) {
+                arenaCenter = mutant.position();
+                detachRestrictionRing();
             }
-            awayFromTarget = awayFromTarget.normalize().scale(DINOSAUR_TOSS_DISTANCE);
-            tossPosition = new Vec3(target.getX() + awayFromTarget.x, target.getY() + DINOSAUR_TOSS_HEIGHT,
-                    target.getZ() + awayFromTarget.z);
+            double angle = chooseTossAngle();
+            previousTossAngle = angle;
+            double radius = Math.max(1.0D, DINOSAUR_TOSS_DISTANCE);
+            tossPosition = new Vec3(arenaCenter.x + Math.cos(angle) * radius,
+                    target.getY() + DINOSAUR_TOSS_HEIGHT, arenaCenter.z + Math.sin(angle) * radius);
             attackPhase = PHASE_MOVE_TO_TOSS;
+        }
+
+        private double chooseTossAngle() {
+            if (Double.isNaN(previousTossAngle)) {
+                return mutant.getRandom().nextDouble() * Math.PI * 2.0D;
+            }
+            // Advance strictly more than the minimum, but less than a half-turn.
+            double minimumStep = Math.toRadians(Mth.clamp(DINOSAUR_MIN_TOSS_ANGLE_DIFFERENCE, 0.0F, 179.0F) + 0.001D);
+            double maximumStep = Math.toRadians(179.999D);
+            double step = minimumStep + mutant.getRandom().nextDouble() * (maximumStep - minimumStep);
+            return (previousTossAngle + step) % (Math.PI * 2.0D);
         }
 
         private void moveToTossPosition() {
@@ -2087,6 +2215,9 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void beginSpearWindup() {
+            mutant.setPos(tossPosition.x, tossPosition.y, tossPosition.z);
+            mutant.getMoveControl().setWantedPosition(tossPosition.x, tossPosition.y, tossPosition.z, 0.0D);
+            mutant.setDeltaMovement(Vec3.ZERO);
             spearTargetPosition = new Vec3(target.getX(), target.getBoundingBox().getCenter().y, target.getZ());
             timer = DINOSAUR_SPEAR_WINDUP_TIME;
             attackPhase = PHASE_SPEAR_WINDUP;
@@ -2110,6 +2241,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
             spear.setPos(start);
             spear.shoot(direction.x, direction.y, direction.z, DINOSAUR_SPEAR_SPEED, 0.0F);
             mutant.level().addFreshEntity(spear);
+            throwsRemaining--;
             timer = DINOSAUR_SPEAR_MAX_FLIGHT_TIME;
             attackPhase = PHASE_WAIT_FOR_SPEAR;
         }
@@ -2120,7 +2252,13 @@ public class MutantEntity extends BossEntity implements PowerableMob {
                 if (spear != null && !spear.isRemoved()) {
                     spear.discard();
                 }
-                attackPhase = PHASE_RETURN_TO_RING;
+                spear = null;
+                if (throwsRemaining > 0) {
+                    beginToss();
+                }
+                else {
+                    attackPhase = PHASE_RETURN_TO_RING;
+                }
             }
         }
 
@@ -2173,17 +2311,24 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
     private class ArrowAttack extends Goal {
         private final MutantEntity mutant;
+        private final List<DarkArrowEntity> spawnedArrows = new ArrayList<>();
         @Nullable
         private LivingEntity target;
-        private double groundY;
-        private boolean yAligned;
-        private boolean grounded;
+        private Vec3 arenaCenter = Vec3.ZERO;
+        @Nullable
+        private Vec3 previousTeleportPosition;
+        private int positionsRemaining;
+        private int volleysRemaining;
         private int preparationTimer;
+        private int volleyTimer;
+        private int postAttackRestTimer;
         private int drumRounds;
         private int drumTimer;
-        private int arrowTimer;
-        private int postAttackRestTimer;
+        private boolean drumsStarted;
+        private boolean arrowsFinished;
+        private boolean recovering;
         private boolean finished;
+        private boolean ringDetached;
 
         private ArrowAttack(MutantEntity mutant) {
             this.mutant = mutant;
@@ -2197,27 +2342,35 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public boolean canUse() {
-            return mutant.stage == PHASE_2 && mutant.nextPhaseTwoAttack == ATTACK_PHASE_TWO_ARROW
+            return mutant.phase == PHASE_2 && mutant.nextPhaseTwoAttack == ATTACK_PHASE_TWO_ARROW
                     && mutant.getTarget() != null && mutant.getTarget().isAlive();
         }
 
         @Override
         public boolean canContinueToUse() {
-            return mutant.stage == PHASE_2 && target != null && target.isAlive() && !finished;
+            return mutant.phase == PHASE_2 && target != null && target.isAlive() && !finished;
         }
 
         @Override
         public void start() {
             target = mutant.getTarget();
-            groundY = mutant.getY();
-            yAligned = false;
-            grounded = false;
-            preparationTimer = ARROW_ATTACK_PREPARE_TIME;
+            arenaCenter = mutant.position();
+            positionsRemaining = ARROW_ATTACK_POSITIONS;
+            previousTeleportPosition = null;
+            postAttackRestTimer = 0;
             drumRounds = 0;
             drumTimer = 0;
-            arrowTimer = 0;
-            postAttackRestTimer = 0;
+            drumsStarted = false;
+            arrowsFinished = false;
+            recovering = false;
             finished = false;
+            ringDetached = false;
+            spawnedArrows.clear();
+            detachRestrictionRing();
+            if (!beginNextPosition()) {
+                arrowsFinished = true;
+                preparationTimer = Math.max(0, ARROW_ATTACK_PREPARE_TIME);
+            }
         }
 
         @Override
@@ -2227,69 +2380,61 @@ public class MutantEntity extends BossEntity implements PowerableMob {
                 return;
             }
 
-            mutant.getLookControl().setLookAt(target, NORMAL_ATTACK_LOOK_LIMIT, NORMAL_ATTACK_LOOK_LIMIT);
-            if (!yAligned) {
-                mutant.getMoveControl().setWantedPosition(mutant.getX(), target.getY(), mutant.getZ(), 1.0D);
-                if (Math.abs(mutant.getY() - target.getY()) <= mutant.getBoundingBox().getSize()) {
-                    yAligned = true;
-                    groundY = findGroundY();
-                    mutant.setDeltaMovement(Vec3.ZERO);
-                }
-                return;
-            }
-            if (!grounded) {
-                mutant.getMoveControl().setWantedPosition(mutant.getX(), groundY, mutant.getZ(), 1.0D);
-                if (Math.abs(mutant.getY() - groundY) <= mutant.getBoundingBox().getSize()) {
-                    grounded = true;
-                    mutant.setDeltaMovement(Vec3.ZERO);
-                }
-                return;
-            }
-
             mutant.setDeltaMovement(Vec3.ZERO);
             mutant.getMoveControl().setWantedPosition(mutant.getX(), mutant.getY(), mutant.getZ(), 1.0D);
+            mutant.getLookControl().setLookAt(target, NORMAL_ATTACK_LOOK_LIMIT, NORMAL_ATTACK_LOOK_LIMIT);
+
+            if (recovering) {
+                if (--postAttackRestTimer <= 0) {
+                    finished = true;
+                }
+                return;
+            }
+            if (!drumsStarted && preparationTimer <= 0) {
+                drumsStarted = true;
+            }
+            if (drumsStarted) {
+                updateDrumThrows();
+            }
             if (preparationTimer > 0) {
                 preparationTimer--;
                 return;
             }
+            if (arrowsFinished) {
+                if (drumThrowsFinished()) {
+                    beginRecovery();
+                }
+                return;
+            }
+            if (--volleyTimer > 0) {
+                return;
+            }
 
+            fireVolley();
+            if (--volleysRemaining > 0) {
+                volleyTimer = Math.max(1, ARROW_ATTACK_VOLLEY_INTERVAL);
+            }
+            else if (!beginNextPosition()) {
+                arrowsFinished = true;
+                if (drumThrowsFinished()) {
+                    beginRecovery();
+                }
+            }
+        }
+
+        private boolean drumThrowsFinished() {
+            return ARROW_ATTACK_DRUM_COUNT <= 0 || drumRounds >= Math.max(0, ARROW_ATTACK_DRUM_ROUNDS);
+        }
+
+        private void updateDrumThrows() {
+            if (drumThrowsFinished()) {
+                return;
+            }
             if (--drumTimer <= 0) {
                 throwWasteDrums();
                 drumRounds++;
-                drumTimer = ARROW_ATTACK_DRUM_INTERVAL;
+                drumTimer = Math.max(1, ARROW_ATTACK_DRUM_INTERVAL);
             }
-            if (drumRounds >= ARROW_ATTACK_DRUM_ROUNDS) {
-                finishAfterDifficultyRest();
-                return;
-            }
-            if (--arrowTimer <= 0) {
-                fireArrowRain();
-                arrowTimer = ARROW_ATTACK_RAIN_INTERVAL;
-            }
-        }
-
-        private void finishAfterDifficultyRest() {
-            if (mutant.getBossDifficulty() != 2 || ARROW_ATTACK_DIFFICULTY_TWO_REST_TIME <= 0) {
-                finished = true;
-                return;
-            }
-            if (postAttackRestTimer == 0) {
-                postAttackRestTimer = ARROW_ATTACK_DIFFICULTY_TWO_REST_TIME;
-            }
-            else if (--postAttackRestTimer <= 0) {
-                finished = true;
-            }
-        }
-
-        private double findGroundY() {
-            BlockPos position = mutant.blockPosition();
-            while (position.getY() > mutant.level().getMinBuildHeight()) {
-                if (mutant.level().getBlockState(position.below()).blocksMotion()) {
-                    return position.getY();
-                }
-                position = position.below();
-            }
-            return mutant.getY();
         }
 
         private void throwWasteDrums() {
@@ -2297,62 +2442,137 @@ public class MutantEntity extends BossEntity implements PowerableMob {
             if (forward.lengthSqr() < 1.0E-4D) {
                 forward = new Vec3(0.0D, 0.0D, 1.0D);
             }
-            Vec3 left = new Vec3(-forward.z, 0.0D, forward.x);
-            Vec3[] directions = {forward, forward.scale(-1.0D), left, left.scale(-1.0D)};
             for (int i = 0; i < ARROW_ATTACK_DRUM_COUNT; i++) {
-                Vec3 direction = directions[i % directions.length];
+                Vec3 direction = forward.yRot((float) (i * Math.PI * 2.0D / ARROW_ATTACK_DRUM_COUNT));
                 ThrownWasteDrumEntity drum = new ThrownWasteDrumEntity(ACEntityRegistry.THROWN_WASTE_DRUM.get(), mutant.level());
-                drum.setPos(mutant.getX(), mutant.getY() + NORMAL_PROJECTILE_HEIGHT, mutant.getZ());
-                drum.setDeltaMovement(direction.scale(ARROW_ATTACK_DRUM_THROW_SPEED).add(0.0D, ARROW_ATTACK_DRUM_THROW_HEIGHT, 0.0D));
+                drum.setPos(arenaCenter.x, arenaCenter.y + NORMAL_PROJECTILE_HEIGHT, arenaCenter.z);
+                drum.setDeltaMovement(direction.scale(ARROW_ATTACK_DRUM_THROW_SPEED)
+                        .add(0.0D, ARROW_ATTACK_DRUM_THROW_HEIGHT, 0.0D));
+                // Keep the native lifetime so each drum can clean up its temporary acid block.
                 mutant.level().addFreshEntity(drum);
             }
         }
 
-        private void fireArrowRain() {
-            BlockPos skyPosition = BlockPos.containing(target.getX(), target.getY() + 1.5D, target.getZ());
-            for (int height = 0; height < ARROW_ATTACK_RAIN_MAX_HEIGHT && skyPosition.getY() < mutant.level().getMaxBuildHeight()
-                    && mutant.level().isEmptyBlock(skyPosition); height++) {
-                skyPosition = skyPosition.above();
+        private boolean beginNextPosition() {
+            if (positionsRemaining <= 0 || ARROW_ATTACK_VOLLEYS_PER_POSITION <= 0) {
+                return false;
             }
 
-            Vec3 aimPosition = target.getBoundingBox().getCenter();
-            Vec3 skyCenter = Vec3.atCenterOf(skyPosition);
-            for (int i = 0; i < ARROW_ATTACK_RAIN_COUNT; i++) {
-                Vec3 spawnPosition = findArrowSpawnPosition(skyCenter);
+            Vec3 position = findNextTeleportPosition();
+            mutant.teleportTo(position.x, position.y, position.z);
+            mutant.setDeltaMovement(Vec3.ZERO);
+            mutant.getMoveControl().setWantedPosition(position.x, position.y, position.z, 1.0D);
+            previousTeleportPosition = position;
+            positionsRemaining--;
+            volleysRemaining = ARROW_ATTACK_VOLLEYS_PER_POSITION;
+            preparationTimer = ARROW_ATTACK_PREPARE_TIME;
+            volleyTimer = 0;
+            return true;
+        }
+
+        private Vec3 findNextTeleportPosition() {
+            double minimumDistance = 2.0D * Math.sin(Math.toRadians(60.0D)) * ARROW_ATTACK_DISTANCE;
+            double minimumDistanceSqr = minimumDistance * minimumDistance;
+            double y = target.getY() + ARROW_ATTACK_Y_OFFSET;
+            if (previousTeleportPosition == null) {
+                double angle = mutant.getRandom().nextDouble() * Math.PI * 2.0D;
+                return new Vec3(target.getX() + Math.cos(angle) * ARROW_ATTACK_DISTANCE, y,
+                        target.getZ() + Math.sin(angle) * ARROW_ATTACK_DISTANCE);
+            }
+
+            for (int attempt = 0; attempt < 32; attempt++) {
+                double angle = mutant.getRandom().nextDouble() * Math.PI * 2.0D;
+                Vec3 candidate = new Vec3(target.getX() + Math.cos(angle) * ARROW_ATTACK_DISTANCE, y,
+                        target.getZ() + Math.sin(angle) * ARROW_ATTACK_DISTANCE);
+                if (candidate.subtract(previousTeleportPosition).horizontalDistanceSqr() >= minimumDistanceSqr) {
+                    return candidate;
+                }
+            }
+
+            Vec3 fromTargetToPrevious = previousTeleportPosition.subtract(target.position()).multiply(1.0D, 0.0D, 1.0D);
+            if (fromTargetToPrevious.lengthSqr() > 1.0E-4D) {
+                // Preserve the teleport radius if a moving player makes the separation impossible.
+                return new Vec3(target.getX(), y, target.getZ())
+                        .subtract(fromTargetToPrevious.normalize().scale(ARROW_ATTACK_DISTANCE));
+            }
+
+            double angle = mutant.getRandom().nextDouble() * Math.PI * 2.0D;
+            return new Vec3(target.getX() + Math.cos(angle) * ARROW_ATTACK_DISTANCE, y,
+                    target.getZ() + Math.sin(angle) * ARROW_ATTACK_DISTANCE);
+        }
+
+        private void fireVolley() {
+            int centerArrow = ARROW_ATTACK_ARROWS_PER_VOLLEY / 2;
+            for (int i = 0; i < ARROW_ATTACK_ARROWS_PER_VOLLEY; i++) {
                 DarkArrowEntity arrow = new DarkArrowEntity(mutant.level(), mutant);
-                arrow.setShadowArrowDamage(ARROW_ATTACK_RAIN_DAMAGE);
-                arrow.setPos(spawnPosition);
-                Vec3 direction = aimPosition.subtract(spawnPosition);
-                arrow.shoot(direction.x, direction.y, direction.z,
-                        ARROW_ATTACK_RAIN_MIN_SPEED + mutant.getRandom().nextFloat() * ARROW_ATTACK_RAIN_SPEED_VARIANCE,
-                        ARROW_ATTACK_RAIN_INACCURACY + mutant.getRandom().nextFloat() * 10.0F);
+                arrow.setShadowArrowDamage(ARROW_ATTACK_DAMAGE);
+                Vec3 direction = target.getBoundingBox().getCenter().subtract(arrow.position()).normalize();
+                if (direction.lengthSqr() < 1.0E-4D) {
+                    direction = mutant.getLookAngle().normalize();
+                }
+                double angle = (i - centerArrow) * ARROW_ATTACK_SPREAD_DEGREES;
+                Vec3 arrowDirection = direction.yRot((float) Math.toRadians(angle));
+                arrow.setNoGravity(true);
+                arrow.shoot(arrowDirection.x, arrowDirection.y, arrowDirection.z,
+                        ARROW_ATTACK_SPEED, ARROW_ATTACK_INACCURACY);
                 mutant.level().addFreshEntity(arrow);
+                spawnedArrows.add(arrow);
             }
         }
 
-        private Vec3 findArrowSpawnPosition(Vec3 skyCenter) {
-            Vec3 position = randomArrowSpawnPosition(skyCenter);
-            for (int attempt = 0; attempt < 6 && !mutant.level().isEmptyBlock(BlockPos.containing(position))
-                    && mutant.level().getFluidState(BlockPos.containing(position)).isEmpty(); attempt++) {
-                position = randomArrowSpawnPosition(skyCenter);
+        private void beginRecovery() {
+            // Let the final volley travel before stop() clears the remaining arrows.
+            recovering = true;
+            postAttackRestTimer = Math.max(0, ARROW_ATTACK_RECOVERY_TIME);
+            if (mutant.getBossDifficulty() == 2) {
+                postAttackRestTimer += Math.max(0, ARROW_ATTACK_DIFFICULTY_TWO_REST_TIME);
             }
-            return !mutant.level().isEmptyBlock(BlockPos.containing(position))
-                    && mutant.level().getFluidState(BlockPos.containing(position)).isEmpty() ? skyCenter : position;
+            if (postAttackRestTimer == 0) {
+                finished = true;
+            }
         }
 
-        private Vec3 randomArrowSpawnPosition(Vec3 skyCenter) {
-            return skyCenter.add(mutant.getRandom().nextFloat() * ARROW_ATTACK_RAIN_HORIZONTAL_SPREAD * 2.0F
-                            - ARROW_ATTACK_RAIN_HORIZONTAL_SPREAD,
-                    mutant.getRandom().nextFloat() * ARROW_ATTACK_RAIN_VERTICAL_SPREAD * 2.0F
-                            - ARROW_ATTACK_RAIN_VERTICAL_SPREAD,
-                    mutant.getRandom().nextFloat() * ARROW_ATTACK_RAIN_HORIZONTAL_SPREAD * 2.0F
-                            - ARROW_ATTACK_RAIN_HORIZONTAL_SPREAD);
+        private void detachRestrictionRing() {
+            AABB searchArea = new AABB(arenaCenter, arenaCenter).inflate(RESTRICTION_BOUNDARY_RADIUS + 8.0D);
+            for (RotatingSoulShieldEntity shield : mutant.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
+                    shield -> shield.getCaster() == mutant)) {
+                shield.switchToAroundPosition(arenaCenter.x, arenaCenter.y, arenaCenter.z);
+            }
+            ringDetached = true;
+        }
+
+        private void restoreRestrictionRing() {
+            if (!ringDetached) {
+                return;
+            }
+            AABB searchArea = new AABB(arenaCenter, arenaCenter).inflate(RESTRICTION_BOUNDARY_RADIUS + 8.0D);
+            for (RotatingSoulShieldEntity shield : mutant.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
+                    shield -> shield.getCaster() == mutant)) {
+                shield.switchToAroundCaster();
+            }
+            ringDetached = false;
         }
 
         @Override
         public void stop() {
-            mutant.setDeltaMovement(Vec3.ZERO);
             mutant.selectNextPhaseTwoAttack(ATTACK_PHASE_TWO_ARROW);
+            boolean handOffToPeppermint = mutant.phase == PHASE_2 && target != null && target.isAlive()
+                    && mutant.nextPhaseTwoAttack == ATTACK_PHASE_TWO_PEPPERMINT;
+            if (handOffToPeppermint) {
+                mutant.waterArenaDetachedForPeppermint = true;
+                mutant.waterArenaCenter = arenaCenter;
+            }
+            else {
+                mutant.waterArenaDetachedForPeppermint = false;
+                restoreRestrictionRing();
+            }
+            for (DarkArrowEntity arrow : spawnedArrows) {
+                if (!arrow.isRemoved()) {
+                    arrow.discard();
+                }
+            }
+            spawnedArrows.clear();
+            mutant.setDeltaMovement(Vec3.ZERO);
             target = null;
         }
     }
@@ -2380,13 +2600,13 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public boolean canUse() {
-            return mutant.stage == PHASE_3 && mutant.nextPhaseThreeAttack == ATTACK_PHASE_THREE_WATER_SPEAR_CENTER
+            return mutant.phase == PHASE_3 && mutant.nextPhaseThreeAttack == ATTACK_PHASE_THREE_WATER_SPEAR_CENTER
                     && mutant.getTarget() != null && mutant.getTarget().isAlive();
         }
 
         @Override
         public boolean canContinueToUse() {
-            return mutant.stage == PHASE_3 && target != null && target.isAlive()
+            return mutant.phase == PHASE_3 && target != null && target.isAlive()
                     && (preparationTimer > 0 || wavesRemaining > 0);
         }
 
@@ -2453,7 +2673,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public void stop() {
-            if (mutant.stage == PHASE_3 && wavesRemaining <= 0) {
+            if (mutant.phase == PHASE_3 && wavesRemaining <= 0) {
                 mutant.selectNextPhaseThreeAttack(ATTACK_PHASE_THREE_WATER_SPEAR_CENTER);
             }
             mutant.setDeltaMovement(Vec3.ZERO);
@@ -2487,13 +2707,13 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public boolean canUse() {
-            return mutant.stage == PHASE_3 && mutant.nextPhaseThreeAttack == ATTACK_PHASE_THREE_WATER_SPEAR_PARALLEL
+            return mutant.phase == PHASE_3 && mutant.nextPhaseThreeAttack == ATTACK_PHASE_THREE_WATER_SPEAR_PARALLEL
                     && mutant.getTarget() != null && mutant.getTarget().isAlive();
         }
 
         @Override
         public boolean canContinueToUse() {
-            return mutant.stage == PHASE_3 && target != null && target.isAlive()
+            return mutant.phase == PHASE_3 && target != null && target.isAlive()
                     && (preparationTimer > 0 || wavesRemaining > 0);
         }
 
@@ -2608,7 +2828,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public void stop() {
-            if (mutant.stage == PHASE_3 && wavesRemaining <= 0) {
+            if (mutant.phase == PHASE_3 && wavesRemaining <= 0) {
                 mutant.selectNextPhaseThreeAttack(ATTACK_PHASE_THREE_WATER_SPEAR_PARALLEL);
             }
             mutant.setDeltaMovement(Vec3.ZERO);
@@ -2639,9 +2859,9 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public boolean canUse() {
-            boolean selectedForPhaseThree = mutant.stage == PHASE_3
+            boolean selectedForPhaseThree = mutant.phase == PHASE_3
                     && mutant.nextPhaseThreeAttack == ATTACK_PHASE_THREE_LASER_SPREAD;
-            boolean selectedForPhaseFour = mutant.stage == PHASE_4
+            boolean selectedForPhaseFour = mutant.phase == PHASE_4
                     && mutant.nextPhaseFourAttack == ATTACK_PHASE_FOUR_LASER_SPREAD;
             return (selectedForPhaseThree || selectedForPhaseFour)
                     && mutant.getTarget() != null && mutant.getTarget().isAlive();
@@ -2649,7 +2869,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public boolean canContinueToUse() {
-            return (mutant.stage == PHASE_3 || mutant.stage == PHASE_4) && target != null && target.isAlive()
+            return (mutant.phase == PHASE_3 || mutant.phase == PHASE_4) && target != null && target.isAlive()
                     && (preparationTimer > 0 || burstsRemaining > 0);
         }
 
@@ -2658,7 +2878,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
             target = mutant.getTarget();
             burstsRemaining = LASER_SPREAD_BURSTS;
             burstTimer = 0;
-            preparationTimer = mutant.stage == PHASE_4 ? PHASE_FOUR_ATTACK_PREPARE_TIME : PHASE_THREE_PREPARE_TIME;
+            preparationTimer = mutant.phase == PHASE_4 ? PHASE_FOUR_ATTACK_PREPARE_TIME : PHASE_THREE_PREPARE_TIME;
             groundY = mutant.getY();
             yAligned = false;
             grounded = false;
@@ -2714,10 +2934,10 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public void stop() {
-            if (mutant.stage == PHASE_3 && burstsRemaining <= 0) {
+            if (mutant.phase == PHASE_3 && burstsRemaining <= 0) {
                 mutant.selectNextPhaseThreeAttack(ATTACK_PHASE_THREE_LASER_SPREAD);
             }
-            else if (mutant.stage == PHASE_4 && burstsRemaining <= 0) {
+            else if (mutant.phase == PHASE_4 && burstsRemaining <= 0) {
                 mutant.nextPhaseFourAttack = ATTACK_PHASE_FOUR_FINAL_SPARK;
             }
             mutant.setDeltaMovement(Vec3.ZERO);
@@ -2749,13 +2969,13 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public boolean canUse() {
-            return mutant.stage == PHASE_3 && mutant.nextPhaseThreeAttack == ATTACK_PHASE_THREE_LASER_MISSILE
+            return mutant.phase == PHASE_3 && mutant.nextPhaseThreeAttack == ATTACK_PHASE_THREE_LASER_MISSILE
                     && mutant.getTarget() != null && mutant.getTarget().isAlive();
         }
 
         @Override
         public boolean canContinueToUse() {
-            return mutant.stage == PHASE_3 && target != null && target.isAlive()
+            return mutant.phase == PHASE_3 && target != null && target.isAlive()
                     && (preparationTimer > 0 || missileBurstsRemaining > 0 || restTimer > 0);
         }
 
@@ -2832,7 +3052,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public void stop() {
-            if (mutant.stage == PHASE_3 && missileBurstsRemaining <= 0 && restTimer <= 0) {
+            if (mutant.phase == PHASE_3 && missileBurstsRemaining <= 0 && restTimer <= 0) {
                 mutant.selectNextPhaseThreeAttack(ATTACK_PHASE_THREE_LASER_MISSILE);
             }
             mutant.setDeltaMovement(Vec3.ZERO);
@@ -2873,13 +3093,13 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public boolean canUse() {
-            return mutant.stage == PHASE_3 && mutant.nextPhaseThreeAttack == ATTACK_PHASE_THREE_HALBERD
+            return mutant.phase == PHASE_3 && mutant.nextPhaseThreeAttack == ATTACK_PHASE_THREE_HALBERD
                     && mutant.getTarget() != null && mutant.getTarget().isAlive();
         }
 
         @Override
         public boolean canContinueToUse() {
-            return mutant.stage == PHASE_3 && target != null && target.isAlive() && attackPhase != PHASE_DONE;
+            return mutant.phase == PHASE_3 && target != null && target.isAlive() && attackPhase != PHASE_DONE;
         }
 
         @Override
@@ -3056,7 +3276,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public void stop() {
-            if (mutant.stage == PHASE_3 && roundsCompleted >= HALBERD_ATTACK_ROUNDS) {
+            if (mutant.phase == PHASE_3 && roundsCompleted >= HALBERD_ATTACK_ROUNDS) {
                 mutant.selectNextPhaseThreeAttack(ATTACK_PHASE_THREE_HALBERD);
             }
             restoreRestrictionRing();
@@ -3089,13 +3309,13 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public boolean canUse() {
-            return mutant.stage == PHASE_3 && mutant.nextPhaseThreeAttack == ATTACK_PHASE_THREE_VOID_RUNE
+            return mutant.phase == PHASE_3 && mutant.nextPhaseThreeAttack == ATTACK_PHASE_THREE_VOID_RUNE
                     && mutant.getTarget() != null && mutant.getTarget().isAlive();
         }
 
         @Override
         public boolean canContinueToUse() {
-            return mutant.stage == PHASE_3 && target != null && target.isAlive() && roundsRemaining > 0;
+            return mutant.phase == PHASE_3 && target != null && target.isAlive() && roundsRemaining > 0;
         }
 
         @Override
@@ -3160,7 +3380,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public void stop() {
-            if (mutant.stage == PHASE_3 && roundsRemaining <= 0) {
+            if (mutant.phase == PHASE_3 && roundsRemaining <= 0) {
                 mutant.selectNextPhaseThreeAttack(ATTACK_PHASE_THREE_VOID_RUNE);
             }
             mutant.setDeltaMovement(Vec3.ZERO);
@@ -3173,14 +3393,20 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         private static final int PHASE_DESCEND = 1;
         private static final int PHASE_PREDICT = 2;
         private static final int PHASE_ROTATE = 3;
-        private static final int PHASE_DONE = 4;
+        private static final int PHASE_WAIT_FOR_LASER = 4;
+        private static final int PHASE_RECOVER = 5;
+        private static final int PHASE_DONE = 6;
+        private static final int POST_LASER_RECOVERY_TIME = 20;
 
         private final MutantEntity mutant;
         @Nullable
         private LivingEntity target;
+        @Nullable
+        private MutantLeviathanLaserEntity laser;
         private Vec3 arenaCenter = Vec3.ZERO;
         private double groundY;
         private float initialYaw;
+        private float lockedYaw;
         private int phaseTimer;
         private int attackPhase;
 
@@ -3196,13 +3422,13 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public boolean canUse() {
-            return mutant.stage == PHASE_3 && mutant.nextPhaseThreeAttack == ATTACK_PHASE_THREE_ABYSSAL
+            return mutant.phase == PHASE_3 && mutant.nextPhaseThreeAttack == ATTACK_PHASE_THREE_ABYSSAL
                     && mutant.getTarget() != null && mutant.getTarget().isAlive();
         }
 
         @Override
         public boolean canContinueToUse() {
-            return mutant.stage == PHASE_3 && target != null && target.isAlive() && attackPhase != PHASE_DONE;
+            return mutant.phase == PHASE_3 && target != null && target.isAlive() && attackPhase != PHASE_DONE;
         }
 
         @Override
@@ -3211,6 +3437,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
             groundY = mutant.getY();
             phaseTimer = 0;
             attackPhase = PHASE_ALIGN;
+            laser = null;
         }
 
         @Override
@@ -3220,6 +3447,8 @@ public class MutantEntity extends BossEntity implements PowerableMob {
                 case PHASE_DESCEND -> descendToGround();
                 case PHASE_PREDICT -> predictLaser();
                 case PHASE_ROTATE -> rotateLaserTowardTarget();
+                case PHASE_WAIT_FOR_LASER -> waitForLaser();
+                case PHASE_RECOVER -> recoverAfterLaser();
                 default -> {
                 }
             }
@@ -3268,13 +3497,15 @@ public class MutantEntity extends BossEntity implements PowerableMob {
             lockLookToYaw(initialYaw);
             spawnPredictionWall();
             if (--phaseTimer <= 0) {
-                MutantLeviathanLaserEntity laser = new MutantLeviathanLaserEntity(ModEntities.MUTANT_LEVIATHAN_LASER.get(),
+                laser = new MutantLeviathanLaserEntity(ModEntities.MUTANT_LEVIATHAN_LASER.get(),
                         mutant.level(), mutant);
                 laser.setPos(mutant.getX(), mutant.getY() + mutant.getBbHeight() * 0.5D, mutant.getZ());
                 laser.setLifespan(ABYSSAL_LASER_ROTATION_TIME + MUTANT_LEVIATHAN_LASER_PORTAL_LIFESPAN_BUFFER);
                 laser.setBeamDuration(ABYSSAL_LASER_ROTATION_TIME);
                 laser.setBeamDamage(ABYSSAL_LASER_DAMAGE, ABYSSAL_LASER_HP_DAMAGE);
-                mutant.level().addFreshEntity(laser);
+                if (!mutant.level().addFreshEntity(laser)) {
+                    laser.discardWithBeam();
+                }
                 phaseTimer = ABYSSAL_LASER_ROTATION_TIME;
                 attackPhase = PHASE_ROTATE;
             }
@@ -3288,8 +3519,31 @@ public class MutantEntity extends BossEntity implements PowerableMob {
             setFacing(nextYaw);
             lockLookToYaw(nextYaw);
             if (--phaseTimer <= 0) {
+                lockedYaw = Mth.wrapDegrees(nextYaw);
+                attackPhase = PHASE_WAIT_FOR_LASER;
+            }
+        }
+
+        private void waitForLaser() {
+            holdFinalFacing();
+            // The beam outlives the rotation timer and can also outlive its portal.
+            if (laser == null || !laser.isLaserActive()) {
+                phaseTimer = POST_LASER_RECOVERY_TIME;
+                attackPhase = PHASE_RECOVER;
+            }
+        }
+
+        private void recoverAfterLaser() {
+            holdFinalFacing();
+            if (--phaseTimer <= 0) {
                 attackPhase = PHASE_DONE;
             }
+        }
+
+        private void holdFinalFacing() {
+            holdPosition();
+            setFacing(lockedYaw);
+            lockLookToYaw(lockedYaw);
         }
 
         private void holdPosition() {
@@ -3341,8 +3595,12 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public void stop() {
-            if (mutant.stage == PHASE_3 && attackPhase == PHASE_DONE) {
+            if (mutant.phase == PHASE_3 && attackPhase == PHASE_DONE) {
                 mutant.selectNextPhaseThreeAttack(ATTACK_PHASE_THREE_ABYSSAL);
+            }
+            if (laser != null) {
+                laser.discardWithBeam();
+                laser = null;
             }
             clearAbyssMines();
             mutant.setDeltaMovement(Vec3.ZERO);
@@ -3383,13 +3641,13 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public boolean canUse() {
-            return mutant.stage == PHASE_3 && mutant.nextPhaseThreeAttack == ATTACK_PHASE_THREE_FLARE
+            return mutant.phase == PHASE_3 && mutant.nextPhaseThreeAttack == ATTACK_PHASE_THREE_FLARE
                     && mutant.getTarget() != null && mutant.getTarget().isAlive();
         }
 
         @Override
         public boolean canContinueToUse() {
-            return mutant.stage == PHASE_3 && target != null && target.isAlive()
+            return mutant.phase == PHASE_3 && target != null && target.isAlive()
                     && (preparationTimer > 0 || bombsRemaining > 0);
         }
 
@@ -3455,7 +3713,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public void stop() {
-            if (mutant.stage == PHASE_3 && bombsRemaining <= 0) {
+            if (mutant.phase == PHASE_3 && bombsRemaining <= 0) {
                 mutant.selectNextPhaseThreeAttack(ATTACK_PHASE_THREE_FLARE);
             }
             target = null;
@@ -3490,13 +3748,13 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public boolean canUse() {
-            return mutant.stage == PHASE_3 && mutant.nextPhaseThreeAttack == ATTACK_PHASE_THREE_IGNIS
+            return mutant.phase == PHASE_3 && mutant.nextPhaseThreeAttack == ATTACK_PHASE_THREE_IGNIS
                     && mutant.getTarget() != null && mutant.getTarget().isAlive();
         }
 
         @Override
         public boolean canContinueToUse() {
-            return mutant.stage == PHASE_3 && target != null && target.isAlive() && attackPhase != PHASE_DONE;
+            return mutant.phase == PHASE_3 && target != null && target.isAlive() && attackPhase != PHASE_DONE;
         }
 
         @Override
@@ -3639,7 +3897,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public void stop() {
-            if (mutant.stage == PHASE_3 && attackPhase == PHASE_DONE) {
+            if (mutant.phase == PHASE_3 && attackPhase == PHASE_DONE) {
                 mutant.selectNextPhaseThreeAttack(ATTACK_PHASE_THREE_IGNIS);
             }
             mutant.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
@@ -3678,13 +3936,13 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public boolean canUse() {
-            return mutant.stage == PHASE_3 && mutant.nextPhaseThreeAttack == ATTACK_PHASE_THREE_SANDSTORM
+            return mutant.phase == PHASE_3 && mutant.nextPhaseThreeAttack == ATTACK_PHASE_THREE_SANDSTORM
                     && mutant.getTarget() != null && mutant.getTarget().isAlive();
         }
 
         @Override
         public boolean canContinueToUse() {
-            return mutant.stage == PHASE_3 && target != null && target.isAlive() && attackPhase != PHASE_DONE;
+            return mutant.phase == PHASE_3 && target != null && target.isAlive() && attackPhase != PHASE_DONE;
         }
 
         @Override
@@ -3748,13 +4006,13 @@ public class MutantEntity extends BossEntity implements PowerableMob {
             mutant.getLookControl().setLookAt(target, NORMAL_ATTACK_LOOK_LIMIT, NORMAL_ATTACK_LOOK_LIMIT);
             orbitSandstormsAroundMutant();
             hurtCollisionContacts();
-            applyDesertCurse();
+            applyMutantInversion();
             if (--phaseTimer <= 0) {
                 attackPhase = PHASE_DONE;
             }
         }
 
-        private void applyDesertCurse() {
+        private void applyMutantInversion() {
             if (mutant.getBossDifficulty() != 2 || mutant.tickCount % 20 != 0) {
                 return;
             }
@@ -3762,7 +4020,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
             int duration = Math.max(20, phaseTimer + 20);
             for (Player player : mutant.level().getEntitiesOfClass(Player.class,
                     mutant.getBoundingBox().inflate(range), player -> player.isAlive() && !player.isSpectator())) {
-                player.addEffect(new MobEffectInstance(ModEffect.EFFECTCURSE_OF_DESERT.get(), duration, 0), mutant);
+                player.addEffect(new MobEffectInstance(ModEffects.MUTANT_INVERSION.get(), duration, 0), mutant);
             }
         }
 
@@ -3780,9 +4038,11 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void hurtCollisionContacts() {
-            for (LivingEntity entity : mutant.level().getEntitiesOfClass(LivingEntity.class, mutant.getBoundingBox(),
-                    entity -> entity != mutant && entity.isAlive() && !mutant.isAlliedTo(entity)
-                            && mutant.getBoundingBox().intersects(entity.getBoundingBox()))) {
+            AABB bodyBox = mutant.getBoundingBox();
+            AABB contactBox = bodyBox.inflate(bodyBox.getXsize() * 0.5D, bodyBox.getYsize() * 0.5D,
+                    bodyBox.getZsize() * 0.5D);
+            for (LivingEntity entity : mutant.level().getEntitiesOfClass(LivingEntity.class, contactBox,
+                    entity -> entity != mutant && entity.isAlive() && !mutant.isAlliedTo(entity))) {
                 entity.hurt(mutant.damageSources().mobAttack(mutant), SANDSTORM_CONTACT_DAMAGE);
             }
         }
@@ -3851,7 +4111,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public void stop() {
-            if (mutant.stage == PHASE_3 && attackPhase == PHASE_DONE) {
+            if (mutant.phase == PHASE_3 && attackPhase == PHASE_DONE) {
                 mutant.selectNextPhaseThreeAttack(ATTACK_PHASE_THREE_SANDSTORM);
             }
             restoreRestrictionRing();
@@ -3892,13 +4152,13 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public boolean canUse() {
-            return mutant.stage == PHASE_4 && mutant.nextPhaseFourAttack == ATTACK_PHASE_FOUR_SUPER_WATER_SPEAR
+            return mutant.phase == PHASE_4 && mutant.nextPhaseFourAttack == ATTACK_PHASE_FOUR_SUPER_WATER_SPEAR
                     && mutant.getTarget() != null && mutant.getTarget().isAlive();
         }
 
         @Override
         public boolean canContinueToUse() {
-            return mutant.stage == PHASE_4 && attackPhase != PHASE_DONE;
+            return mutant.phase == PHASE_4 && attackPhase != PHASE_DONE;
         }
 
         @Override
@@ -4087,13 +4347,13 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public boolean canUse() {
-            return mutant.stage == PHASE_4 && mutant.nextPhaseFourAttack == ATTACK_PHASE_FOUR_FINAL_SPARK
+            return mutant.phase == PHASE_4 && mutant.nextPhaseFourAttack == ATTACK_PHASE_FOUR_FINAL_SPARK
                     && mutant.getTarget() != null && mutant.getTarget().isAlive();
         }
 
         @Override
         public boolean canContinueToUse() {
-            return mutant.stage == PHASE_4 && attackPhase != PHASE_DONE;
+            return mutant.phase == PHASE_4 && attackPhase != PHASE_DONE;
         }
 
         @Override
@@ -4304,13 +4564,13 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         @Override
         public boolean canUse() {
-            return mutant.stage == PHASE_4 && mutant.nextPhaseFourAttack == ATTACK_PHASE_FOUR_PHANTOM_ARROW
+            return mutant.phase == PHASE_4 && mutant.nextPhaseFourAttack == ATTACK_PHASE_FOUR_PHANTOM_ARROW
                     && mutant.getTarget() != null && mutant.getTarget().isAlive();
         }
 
         @Override
         public boolean canContinueToUse() {
-            return mutant.stage == PHASE_4 && attackPhase != PHASE_DONE;
+            return mutant.phase == PHASE_4 && attackPhase != PHASE_DONE;
         }
 
         @Override

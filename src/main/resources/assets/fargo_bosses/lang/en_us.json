@@ -1,4 +1,5 @@
 {
   "entity.fargo_bosses.abomination": "Abomination",
-  "entity.fargo_bosses.mutant": "Mutant"
+  "entity.fargo_bosses.mutant": "Mutant",
+  "effect.fargo_bosses.mutant_inversion": "Mutant Inversion"
 }

@@ -22,6 +22,8 @@ public class MutantLeviathanLaserEntity extends Abyss_Portal_Entity {
     private LivingEntity caster;
     @Nullable
     private UUID casterUuid;
+    @Nullable
+    private MutantPortalAbyssBlastEntity beam;
     private boolean beamSpawned;
     private float beamDamage = 33.0F;
     private float beamHpDamage;
@@ -56,6 +58,17 @@ public class MutantLeviathanLaserEntity extends Abyss_Portal_Entity {
         beamDuration = Math.max(1, duration);
     }
 
+    public boolean isLaserActive() {
+        return !isRemoved() || (beam != null && !beam.isRemoved());
+    }
+
+    public void discardWithBeam() {
+        if (beam != null) {
+            beam.discard();
+        }
+        discard();
+    }
+
     @Override
     protected void defineSynchedData() {
         super.defineSynchedData();
@@ -65,6 +78,9 @@ public class MutantLeviathanLaserEntity extends Abyss_Portal_Entity {
     @Override
     public void tick() {
         super.tick();
+        if (isRemoved()) {
+            return;
+        }
         resolveCaster();
         if (caster == null || !caster.isAlive()) {
             discard();
@@ -77,9 +93,11 @@ public class MutantLeviathanLaserEntity extends Abyss_Portal_Entity {
         xRotO = getXRot();
         if (!level().isClientSide && !beamSpawned) {
             int duration = beamDuration >= 0 ? beamDuration : Math.max(1, getLifespan() - 20);
-            MutantPortalAbyssBlastEntity beam = new MutantPortalAbyssBlastEntity(level(), caster, getX(), getY(), getZ(),
+            beam = new MutantPortalAbyssBlastEntity(level(), caster, getX(), getY(), getZ(),
                     duration, beamDamage, beamHpDamage);
-            level().addFreshEntity(beam);
+            if (!level().addFreshEntity(beam)) {
+                beam.discard();
+            }
             beamSpawned = true;
         }
     }

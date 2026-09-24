@@ -85,7 +85,8 @@ public class ModEntities {
 
     public static final RegistryObject<EntityType<MutantMagneticWeaponEntity>> MUTANT_MAGNETIC_WEAPON = REGISTER.register("mutant_magnetic_weapon",
             () -> EntityType.Builder.<MutantMagneticWeaponEntity>of(MutantMagneticWeaponEntity::new, MobCategory.MISC)
-                    .sized(0.5F, 0.5F)
+                    .sized(MutantMagneticWeaponEntity.COLLISION_RADIUS * 2.0F,
+                            MutantMagneticWeaponEntity.COLLISION_RADIUS * 2.0F)
                     .setUpdateInterval(1)
                     .setTrackingRange(64)
                     .setShouldReceiveVelocityUpdates(true)

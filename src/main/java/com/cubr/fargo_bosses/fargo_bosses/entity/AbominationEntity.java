@@ -146,7 +146,8 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
 
     private static final float RESTRICTION_BOUNDARY_ORBIT_SPEED = Mth.TWO_PI / 160.0F;
 
-    private int phase, phaseTimer, attackCooldown, nextAttack;
+    public int phase;
+    private int phaseTimer, attackCooldown, nextAttack;
     private boolean restrictionBoundaryCreated;
     private double bombSafetyX, bombSafetyZ;
     private int bombSafetyTicks;
