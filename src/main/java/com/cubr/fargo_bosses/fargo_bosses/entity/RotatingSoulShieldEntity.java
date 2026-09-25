@@ -5,6 +5,7 @@ import com.cubr.fargo_bosses.fargo_bosses.registry.ModEntities;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -31,6 +32,10 @@ public class RotatingSoulShieldEntity extends SoulShieldEntity {
     private double orbitCenterY;
     private double orbitCenterZ;
     private int manualLifetime = -1;
+    private int lerpSteps;
+    private Vec3 lerpPosition = Vec3.ZERO;
+    private float lerpYaw;
+    private float lerpPitch;
 
     public RotatingSoulShieldEntity(EntityType<? extends SoulShieldEntity> type, Level level) {
         super(type, level);
@@ -101,10 +106,42 @@ public class RotatingSoulShieldEntity extends SoulShieldEntity {
     }
 
     @Override
+    public void lerpTo(double x, double y, double z, float yaw, float pitch, int steps, boolean teleport) {
+        if (!level().isClientSide || teleport || steps <= 0) {
+            lerpSteps = 0;
+            super.lerpTo(x, y, z, yaw, pitch, steps, teleport);
+            return;
+        }
+        lerpPosition = new Vec3(x, y, z);
+        lerpYaw = yaw;
+        lerpPitch = pitch;
+        lerpSteps = steps;
+    }
+
+    private void interpolateClientPosition() {
+        if (lerpSteps <= 0) {
+            return;
+        }
+        setPos(position().lerp(lerpPosition, 1.0D / lerpSteps));
+        setYRot(getYRot() + Mth.wrapDegrees(lerpYaw - getYRot()) / lerpSteps);
+        setXRot(getXRot() + (lerpPitch - getXRot()) / lerpSteps);
+        lerpSteps--;
+    }
+
+    @Override
     public void tick() {
         baseTick();
         if (getAnimationState() > 0) {
             AnimationTicks++;
+        }
+
+        if (level().isClientSide) {
+            // Follow server positions only; independently chasing destinations fights network updates.
+            interpolateClientPosition();
+            spawnConfiguredParticles();
+            RendercontrolledAnim2.increaseTimer();
+            prevactivateProgress = activateProgress;
+            return;
         }
 
         LivingEntity caster = getCaster();

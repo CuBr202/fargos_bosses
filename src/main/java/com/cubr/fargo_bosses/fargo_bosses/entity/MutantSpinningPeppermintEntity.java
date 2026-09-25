@@ -6,6 +6,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -24,6 +25,34 @@ public class MutantSpinningPeppermintEntity extends SpinningPeppermintEntity {
 
     public MutantSpinningPeppermintEntity(EntityType<? extends MutantSpinningPeppermintEntity> type, Level level) {
         super(type, level);
+        noPhysics = true;
+        setNoGravity(true);
+    }
+
+    @Override
+    public void move(MoverType type, Vec3 movement) {
+        noPhysics = true;
+        super.move(type, movement);
+    }
+
+    @Override
+    protected void checkInsideBlocks() {
+        // Contact damage is handled separately; block callbacks must not run.
+    }
+
+    @Override
+    public boolean isIgnoringBlockTriggers() {
+        return true;
+    }
+
+    @Override
+    public boolean isPushedByFluid() {
+        return false;
+    }
+
+    @Override
+    public PushReaction getPistonPushReaction() {
+        return PushReaction.IGNORE;
     }
 
     public void configure(float radius, float spinSpeed, float startAngle, int lifetime, float damage, float hitRange) {
@@ -83,6 +112,8 @@ public class MutantSpinningPeppermintEntity extends SpinningPeppermintEntity {
 
     @Override
     public void tick() {
+        noPhysics = true;
+        setNoGravity(true);
         if (level().isClientSide) {
             // The original tick applies the server's position interpolation on
             // clients. Without it, custom peppermints remain at spawn position.

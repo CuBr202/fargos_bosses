@@ -68,6 +68,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
     private static final EntityDataAccessor<Boolean> PHASE_TWO_MUSIC = SynchedEntityData.defineId(AbominationEntity.class, EntityDataSerializers.BOOLEAN);
 
     public static final int PHASE_1 = 0, PHASE_1_TRANSITION = 1, PHASE_2 = 2, PHASE_2_TRANSITION = 3, PHASE_3 = 4, DEATH_PHASE = 5;
+    private static final int PHASE_TRANSITION_MIN_AGE = 20;
     private static final int TRANSITION_TIME = 2 * 20;
 
     public static final int ATK_DICE = 0, ATK_CHIPS_CIRCLE = 1, ATK_DASH = 2, ATK_DAGGER = 3, ATK_LINEAR = 4, ATK_LASER = 5, ATK_SUMMON = 6, ATK_BOMB = 7;
@@ -470,11 +471,11 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         if (attackCooldown > 0) attackCooldown--;
         if (bombSafetyTicks > 0) bombSafetyTicks--;
         updatePoweredState();
-        if (waitingForFinalHit) {
+        if (waitingForFinalHit || tickCount < PHASE_TRANSITION_MIN_AGE) {
             super.customServerAiStep();
             return;
         }
-        if (phase == PHASE_1 && tickCount > 10 && getHealth() <= getMaxHealth() * configFloat(Config.ABOMINATION_PHASE_1_THRESHOLD)) {
+        if (phase == PHASE_1 && getHealth() <= getMaxHealth() * configFloat(Config.ABOMINATION_PHASE_1_THRESHOLD)) {
             beginPhase1Transition();
         }
         else if (phase == PHASE_2 && getHealth() <= 1.0F) {
@@ -513,6 +514,9 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
     }
 
     private void beginPhase1Transition() {
+        if (tickCount < PHASE_TRANSITION_MIN_AGE) {
+            return;
+        }
         phase = PHASE_1_TRANSITION;
         phaseTimer = TRANSITION_TIME;
         attackCooldown = TRANSITION_TIME;
@@ -542,6 +546,9 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
     }
 
     private void beginPhase2Transition() {
+        if (tickCount < PHASE_TRANSITION_MIN_AGE) {
+            return;
+        }
         phase = PHASE_2_TRANSITION;
         phaseTimer = TRANSITION_TIME;
         attackCooldown = TRANSITION_TIME;

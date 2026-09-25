@@ -32,6 +32,7 @@ import lykrast.meetyourfight.entity.movement.VexMovementController;
 import lykrast.meetyourfight.registry.MYFSounds;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -76,6 +77,7 @@ import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.event.ForgeEventFactory;
 import net.minecraftforge.api.distmarker.OnlyIn;
@@ -94,6 +96,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
     private static final EntityDataAccessor<Boolean> POWERED = SynchedEntityData.defineId(MutantEntity.class, EntityDataSerializers.BOOLEAN);
     public static final int PHASE_1 = 0, PHASE_1_TRANSITION = 1, PHASE_2 = 2, PHASE_2_TRANSITION = 3,
             PHASE_3 = 4, PHASE_3_TRANSITION = 5, PHASE_4 = 6, DEATH_PHASE = 7;
+    private static final int PHASE_TRANSITION_MIN_AGE = 20;
 
     private static final int ATTACK_NORMAL_SHOOTING = 0;
     private static final int ATTACK_NORMAL_DASH = 1;
@@ -815,6 +818,10 @@ public class MutantEntity extends BossEntity implements PowerableMob {
                     || phase == PHASE_4) {
                 health = Math.max(health, Math.max(1.0F, getHealth()));
             }
+            else if (tickCount < PHASE_TRANSITION_MIN_AGE) {
+                // Keep lethal hits survivable until phase transitions are allowed.
+                health = Math.max(1.0F, health);
+            }
             // Check the final health, after Forge damage events, armor, and resistance.
             else if (phase == PHASE_1 && health <= getMaxHealth() * (2.0F / 3.0F)) {
                 health = getMaxHealth() * (2.0F / 3.0F);
@@ -852,7 +859,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
     @Override
     public void customServerAiStep() {
         updatePoweredState();
-        if (waitingForFinalHit) {
+        if (waitingForFinalHit || tickCount < PHASE_TRANSITION_MIN_AGE) {
             super.customServerAiStep();
             return;
         }
@@ -897,6 +904,9 @@ public class MutantEntity extends BossEntity implements PowerableMob {
     }
 
     private void beginTransition(int transitionPhase) {
+        if (tickCount < PHASE_TRANSITION_MIN_AGE) {
+            return;
+        }
         phase = transitionPhase;
         phaseTimer = TRANSITION_TIME;
         pendingActivePhase = -1;
@@ -937,17 +947,14 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         if (phaseStartAlignmentState == 0) {
-            getMoveControl().setWantedPosition(getX(), target.getY(), getZ(), 1.0D);
-            if (Math.abs(getY() - target.getY()) <= getBbHeight()) {
+            if (moveToAttackHeight(target.getY())) {
                 phaseStartGroundY = findGroundY();
                 phaseStartAlignmentState = 1;
             }
             return;
         }
 
-        getMoveControl().setWantedPosition(getX(), phaseStartGroundY, getZ(), 1.0D);
-        if (Math.abs(getY() - phaseStartGroundY) <= getBbHeight()) {
-            setDeltaMovement(Vec3.ZERO);
+        if (moveToAttackHeight(phaseStartGroundY)) {
             activatePendingPhase();
         }
     }
@@ -988,8 +995,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
     private void updateFinalHitLanding() {
         LivingEntity target = getTarget();
         if (finalHitLandingState == 0 && target != null && target.isAlive()) {
-            getMoveControl().setWantedPosition(getX(), target.getY(), getZ(), 1.0D);
-            if (Math.abs(getY() - target.getY()) <= getBbHeight()) {
+            if (moveToAttackHeight(target.getY())) {
                 finalHitGroundY = findGroundY();
                 finalHitLandingState = 1;
             }
@@ -1001,8 +1007,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
                 finalHitGroundY = findGroundY();
                 finalHitLandingState = 1;
             }
-            getMoveControl().setWantedPosition(getX(), finalHitGroundY, getZ(), 1.0D);
-            if (Math.abs(getY() - finalHitGroundY) <= getBbHeight()) {
+            if (moveToAttackHeight(finalHitGroundY)) {
                 finalHitLandingState = 2;
             }
             return;
@@ -1086,14 +1091,57 @@ public class MutantEntity extends BossEntity implements PowerableMob {
     }
 
     private double findGroundYAt(double x, double y, double z) {
-        BlockPos position = BlockPos.containing(x, y, z);
-        while (position.getY() > level().getMinBuildHeight()) {
-            if (level().getBlockState(position.below()).blocksMotion()) {
-                return position.getY();
+        double halfWidth = getBbWidth() * 0.5D;
+        for (int blockY = Math.min(Mth.floor(y), level().getMaxBuildHeight() - 1);
+             blockY >= level().getMinBuildHeight(); blockY--) {
+            AABB layer = new AABB(x - halfWidth, blockY, z - halfWidth,
+                    x + halfWidth, blockY + 1.0D, z + halfWidth).deflate(1.0E-5D);
+            double surfaceY = Double.NEGATIVE_INFINITY;
+            for (VoxelShape shape : level().getBlockCollisions(this, layer)) {
+                surfaceY = Math.max(surfaceY, shape.max(Direction.Axis.Y));
             }
-            position = position.below();
+            if (surfaceY != Double.NEGATIVE_INFINITY) {
+                return clearGroundPlacement(x, surfaceY, z);
+            }
         }
         return y;
+    }
+
+    private double clearGroundPlacement(double x, double y, double z) {
+        // A descent can start inside terrain. Lift the entire body out before landing.
+        while (y < level().getMaxBuildHeight()) {
+            AABB body = getBoundingBox().move(x - getX(), y - getY(), z - getZ()).deflate(1.0E-5D);
+            double clearY = y;
+            for (VoxelShape shape : level().getBlockCollisions(this, body)) {
+                clearY = Math.max(clearY, shape.max(Direction.Axis.Y));
+            }
+            if (clearY <= y) {
+                break;
+            }
+            y = clearY;
+        }
+        return y;
+    }
+
+    private boolean moveToAttackHeight(double y) {
+        return moveToAttackPosition(getX(), y, getZ());
+    }
+
+    private boolean moveToAttackPosition(double x, double y, double z) {
+        return moveToAttackPosition(x, y, z, 1.0D, getBoundingBox().getSize());
+    }
+
+    private boolean moveToAttackPosition(double x, double y, double z, double speed, double tolerance) {
+        double safeY = clearGroundPlacement(x, y, z);
+        getMoveControl().setWantedPosition(x, safeY, z, speed);
+        double arrivalDistance = Math.max(tolerance, getBoundingBox().getSize());
+        if (position().distanceToSqr(new Vec3(x, safeY, z)) > arrivalDistance * arrivalDistance) {
+            return false;
+        }
+        setPos(x, safeY, z);
+        setDeltaMovement(Vec3.ZERO);
+        getMoveControl().setWantedPosition(x, safeY, z, 1.0D);
+        return true;
     }
 
     @Override
@@ -1559,20 +1607,15 @@ public class MutantEntity extends BossEntity implements PowerableMob {
             }
             mutant.getLookControl().setLookAt(target, NORMAL_ATTACK_LOOK_LIMIT, NORMAL_ATTACK_LOOK_LIMIT);
             if (!yAligned) {
-                mutant.getMoveControl().setWantedPosition(stationaryPosition.x, target.getY(), stationaryPosition.z, 1.0D);
-                if (Math.abs(mutant.getY() - target.getY()) <= mutant.getBoundingBox().getSize()) {
-                    mutant.setPos(stationaryPosition.x, target.getY(), stationaryPosition.z);
-                    mutant.setDeltaMovement(Vec3.ZERO);
+                if (mutant.moveToAttackPosition(stationaryPosition.x, target.getY(), stationaryPosition.z)) {
                     yAligned = true;
                     groundY = mutant.findGroundY();
                 }
                 return;
             }
             if (!grounded) {
-                mutant.getMoveControl().setWantedPosition(stationaryPosition.x, groundY, stationaryPosition.z, 1.0D);
-                if (Math.abs(mutant.getY() - groundY) <= mutant.getBoundingBox().getSize()) {
-                    stationaryPosition = new Vec3(stationaryPosition.x, groundY, stationaryPosition.z);
-                    mutant.setPos(stationaryPosition);
+                if (mutant.moveToAttackPosition(stationaryPosition.x, groundY, stationaryPosition.z)) {
+                    stationaryPosition = mutant.position();
                     grounded = true;
                     mutant.setDeltaMovement(Vec3.ZERO);
                 }
@@ -1714,20 +1757,15 @@ public class MutantEntity extends BossEntity implements PowerableMob {
 
         private void alignToTargetY() {
             mutant.getLookControl().setLookAt(target, NORMAL_ATTACK_LOOK_LIMIT, NORMAL_ATTACK_LOOK_LIMIT);
-            mutant.getMoveControl().setWantedPosition(arenaCenter.x, target.getY(), arenaCenter.z, 1.0D);
-            if (Math.abs(mutant.getY() - target.getY()) <= mutant.getBoundingBox().getSize()) {
-                mutant.setPos(arenaCenter.x, target.getY(), arenaCenter.z);
-                mutant.setDeltaMovement(Vec3.ZERO);
+            if (mutant.moveToAttackPosition(arenaCenter.x, target.getY(), arenaCenter.z)) {
                 groundY = mutant.findGroundY();
                 attackPhase = PHASE_DESCEND;
             }
         }
 
         private void descendToGround() {
-            mutant.getMoveControl().setWantedPosition(arenaCenter.x, groundY, arenaCenter.z, 1.0D);
-            if (Math.abs(mutant.getY() - groundY) <= mutant.getBoundingBox().getSize()) {
-                arenaCenter = new Vec3(arenaCenter.x, groundY, arenaCenter.z);
-                mutant.setPos(arenaCenter);
+            if (mutant.moveToAttackPosition(arenaCenter.x, groundY, arenaCenter.z)) {
+                arenaCenter = mutant.position();
                 holdStill();
                 detachRestrictionRing();
                 attackPhase = PHASE_PREPARE;
@@ -1834,10 +1872,8 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void returnToArena() {
-            mutant.getMoveControl().setWantedPosition(arenaCenter.x, arenaCenter.y, arenaCenter.z,
-                    Math.max(0.1F, WATER_RETURN_SPEED));
-            if (mutant.position().distanceTo(arenaCenter) <= mutant.getBoundingBox().getSize()) {
-                mutant.setPos(arenaCenter);
+            if (mutant.moveToAttackPosition(arenaCenter.x, arenaCenter.y, arenaCenter.z,
+                    Math.max(0.1F, WATER_RETURN_SPEED), mutant.getBoundingBox().getSize())) {
                 holdStill();
                 attackPhase = PHASE_DONE;
             }
@@ -1849,6 +1885,8 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void detachRestrictionRing() {
+            arenaCenter = new Vec3(arenaCenter.x,
+                    mutant.clearGroundPlacement(arenaCenter.x, arenaCenter.y, arenaCenter.z), arenaCenter.z);
             AABB searchArea = new AABB(arenaCenter, arenaCenter).inflate(RESTRICTION_BOUNDARY_RADIUS + 8.0D);
             for (RotatingSoulShieldEntity shield : mutant.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
                     shield -> shield.getCaster() == mutant)) {
@@ -2065,6 +2103,8 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void detachRestrictionRing() {
+            arenaCenter = new Vec3(arenaCenter.x,
+                    mutant.clearGroundPlacement(arenaCenter.x, arenaCenter.y, arenaCenter.z), arenaCenter.z);
             AABB searchArea = new AABB(arenaCenter, arenaCenter).inflate(RESTRICTION_BOUNDARY_RADIUS + 8.0D);
             for (RotatingSoulShieldEntity shield : mutant.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
                     shield -> shield.getCaster() == mutant)) {
@@ -2174,9 +2214,13 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void prepare() {
-            alignToTargetY();
+            boolean aligned = mutant.moveToAttackPosition(mutant.getX(), target.getY(), mutant.getZ(),
+                    DINOSAUR_TOSS_MOVE_SPEED, mutant.getBoundingBox().getSize());
             mutant.getLookControl().setLookAt(target, NORMAL_ATTACK_LOOK_LIMIT, NORMAL_ATTACK_LOOK_LIMIT);
-            if (--timer <= 0) {
+            if (timer > 0) {
+                timer--;
+            }
+            if (timer <= 0 && aligned) {
                 beginToss();
             }
         }
@@ -2263,19 +2307,15 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void returnToRing() {
-            mutant.getMoveControl().setWantedPosition(arenaCenter.x, arenaCenter.y, arenaCenter.z, DINOSAUR_RETURN_SPEED);
-            if (mutant.position().distanceToSqr(arenaCenter)
-                    <= DINOSAUR_TOSS_POSITION_TOLERANCE * DINOSAUR_TOSS_POSITION_TOLERANCE) {
+            if (mutant.moveToAttackPosition(arenaCenter.x, arenaCenter.y, arenaCenter.z,
+                    DINOSAUR_RETURN_SPEED, DINOSAUR_TOSS_POSITION_TOLERANCE)) {
                 attackPhase = PHASE_DONE;
             }
         }
 
-        private void alignToTargetY() {
-            mutant.setDeltaMovement(Vec3.ZERO);
-            mutant.getMoveControl().setWantedPosition(mutant.getX(), target.getY(), mutant.getZ(), DINOSAUR_TOSS_MOVE_SPEED);
-        }
-
         private void detachRestrictionRing() {
+            arenaCenter = new Vec3(arenaCenter.x,
+                    mutant.clearGroundPlacement(arenaCenter.x, arenaCenter.y, arenaCenter.z), arenaCenter.z);
             AABB searchArea = new AABB(arenaCenter, arenaCenter).inflate(RESTRICTION_BOUNDARY_RADIUS + 8.0D);
             for (RotatingSoulShieldEntity shield : mutant.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
                     shield -> shield.getCaster() == mutant)) {
@@ -2533,6 +2573,8 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void detachRestrictionRing() {
+            arenaCenter = new Vec3(arenaCenter.x,
+                    mutant.clearGroundPlacement(arenaCenter.x, arenaCenter.y, arenaCenter.z), arenaCenter.z);
             AABB searchArea = new AABB(arenaCenter, arenaCenter).inflate(RESTRICTION_BOUNDARY_RADIUS + 8.0D);
             for (RotatingSoulShieldEntity shield : mutant.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
                     shield -> shield.getCaster() == mutant)) {
@@ -2624,8 +2666,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         @Override
         public void tick() {
             if (!yAligned) {
-                mutant.getMoveControl().setWantedPosition(mutant.getX(), target.getY(), mutant.getZ(), 1.0D);
-                if (Math.abs(mutant.getY() - target.getY()) <= mutant.getBoundingBox().getSize()) {
+                if (mutant.moveToAttackHeight(target.getY())) {
                     yAligned = true;
                     groundY = mutant.findGroundY();
                     mutant.setDeltaMovement(Vec3.ZERO);
@@ -2633,8 +2674,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
                 return;
             }
             if (!grounded) {
-                mutant.getMoveControl().setWantedPosition(mutant.getX(), groundY, mutant.getZ(), 1.0D);
-                if (Math.abs(mutant.getY() - groundY) <= mutant.getBoundingBox().getSize()) {
+                if (mutant.moveToAttackHeight(groundY)) {
                     grounded = true;
                     mutant.setDeltaMovement(Vec3.ZERO);
                 }
@@ -2733,8 +2773,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         @Override
         public void tick() {
             if (!yAligned) {
-                mutant.getMoveControl().setWantedPosition(mutant.getX(), target.getY(), mutant.getZ(), 1.0D);
-                if (Math.abs(mutant.getY() - target.getY()) <= mutant.getBoundingBox().getSize()) {
+                if (mutant.moveToAttackHeight(target.getY())) {
                     yAligned = true;
                     groundY = mutant.findGroundY();
                     mutant.setDeltaMovement(Vec3.ZERO);
@@ -2742,8 +2781,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
                 return;
             }
             if (!grounded) {
-                mutant.getMoveControl().setWantedPosition(mutant.getX(), groundY, mutant.getZ(), 1.0D);
-                if (Math.abs(mutant.getY() - groundY) <= mutant.getBoundingBox().getSize()) {
+                if (mutant.moveToAttackHeight(groundY)) {
                     grounded = true;
                     mutant.setDeltaMovement(Vec3.ZERO);
                 }
@@ -2887,8 +2925,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         @Override
         public void tick() {
             if (!yAligned) {
-                mutant.getMoveControl().setWantedPosition(mutant.getX(), target.getY(), mutant.getZ(), 1.0D);
-                if (Math.abs(mutant.getY() - target.getY()) <= mutant.getBoundingBox().getSize()) {
+                if (mutant.moveToAttackHeight(target.getY())) {
                     yAligned = true;
                     groundY = mutant.findGroundY();
                     mutant.setDeltaMovement(Vec3.ZERO);
@@ -2896,8 +2933,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
                 return;
             }
             if (!grounded) {
-                mutant.getMoveControl().setWantedPosition(mutant.getX(), groundY, mutant.getZ(), 1.0D);
-                if (Math.abs(mutant.getY() - groundY) <= mutant.getBoundingBox().getSize()) {
+                if (mutant.moveToAttackHeight(groundY)) {
                     grounded = true;
                     mutant.setDeltaMovement(Vec3.ZERO);
                 }
@@ -2994,8 +3030,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         @Override
         public void tick() {
             if (!yAligned) {
-                mutant.getMoveControl().setWantedPosition(mutant.getX(), target.getY(), mutant.getZ(), 1.0D);
-                if (Math.abs(mutant.getY() - target.getY()) <= mutant.getBoundingBox().getSize()) {
+                if (mutant.moveToAttackHeight(target.getY())) {
                     yAligned = true;
                     groundY = mutant.findGroundY();
                     mutant.setDeltaMovement(Vec3.ZERO);
@@ -3003,8 +3038,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
                 return;
             }
             if (!grounded) {
-                mutant.getMoveControl().setWantedPosition(mutant.getX(), groundY, mutant.getZ(), 1.0D);
-                if (Math.abs(mutant.getY() - groundY) <= mutant.getBoundingBox().getSize()) {
+                if (mutant.moveToAttackHeight(groundY)) {
                     grounded = true;
                     mutant.setDeltaMovement(Vec3.ZERO);
                 }
@@ -3132,8 +3166,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void alignToTargetY() {
-            mutant.getMoveControl().setWantedPosition(mutant.getX(), target.getY(), mutant.getZ(), 1.0D);
-            if (Math.abs(mutant.getY() - target.getY()) <= mutant.getBoundingBox().getSize()) {
+            if (mutant.moveToAttackHeight(target.getY())) {
                 groundY = mutant.findGroundY();
                 mutant.setDeltaMovement(Vec3.ZERO);
                 attackPhase = PHASE_DESCEND;
@@ -3141,8 +3174,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void descendToGround() {
-            mutant.getMoveControl().setWantedPosition(mutant.getX(), groundY, mutant.getZ(), 1.0D);
-            if (Math.abs(mutant.getY() - groundY) <= mutant.getBoundingBox().getSize()) {
+            if (mutant.moveToAttackHeight(groundY)) {
                 mutant.setDeltaMovement(Vec3.ZERO);
                 arenaCenter = mutant.position();
                 detachRestrictionRing();
@@ -3254,6 +3286,8 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void detachRestrictionRing() {
+            arenaCenter = new Vec3(arenaCenter.x,
+                    mutant.clearGroundPlacement(arenaCenter.x, arenaCenter.y, arenaCenter.z), arenaCenter.z);
             AABB searchArea = new AABB(arenaCenter, arenaCenter).inflate(RESTRICTION_BOUNDARY_RADIUS + 8.0D);
             for (RotatingSoulShieldEntity shield : mutant.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
                     shield -> shield.getCaster() == mutant)) {
@@ -3333,8 +3367,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         @Override
         public void tick() {
             if (!yAligned) {
-                mutant.getMoveControl().setWantedPosition(mutant.getX(), target.getY(), mutant.getZ(), 1.0D);
-                if (Math.abs(mutant.getY() - target.getY()) <= mutant.getBoundingBox().getSize()) {
+                if (mutant.moveToAttackHeight(target.getY())) {
                     yAligned = true;
                     groundY = mutant.findGroundY();
                     mutant.setDeltaMovement(Vec3.ZERO);
@@ -3342,8 +3375,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
                 return;
             }
             if (!grounded) {
-                mutant.getMoveControl().setWantedPosition(mutant.getX(), groundY, mutant.getZ(), 1.0D);
-                if (Math.abs(mutant.getY() - groundY) <= mutant.getBoundingBox().getSize()) {
+                if (mutant.moveToAttackHeight(groundY)) {
                     grounded = true;
                     runeOrigin = mutant.position();
                     mutant.setDeltaMovement(Vec3.ZERO);
@@ -3455,8 +3487,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void alignToTarget() {
-            mutant.getMoveControl().setWantedPosition(mutant.getX(), target.getY(), mutant.getZ(), 1.0D);
-            if (Math.abs(mutant.getY() - target.getY()) <= mutant.getBoundingBox().getSize()) {
+            if (mutant.moveToAttackHeight(target.getY())) {
                 groundY = mutant.findGroundY();
                 mutant.setDeltaMovement(Vec3.ZERO);
                 attackPhase = PHASE_DESCEND;
@@ -3464,8 +3495,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void descendToGround() {
-            mutant.getMoveControl().setWantedPosition(mutant.getX(), groundY, mutant.getZ(), 1.0D);
-            if (Math.abs(mutant.getY() - groundY) <= mutant.getBoundingBox().getSize()) {
+            if (mutant.moveToAttackHeight(groundY)) {
                 mutant.setDeltaMovement(Vec3.ZERO);
                 arenaCenter = mutant.position();
                 spawnMines();
@@ -3667,8 +3697,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         @Override
         public void tick() {
             if (!yAligned) {
-                mutant.getMoveControl().setWantedPosition(mutant.getX(), target.getY(), mutant.getZ(), 1.0D);
-                if (Math.abs(mutant.getY() - target.getY()) <= mutant.getBoundingBox().getSize()) {
+                if (mutant.moveToAttackHeight(target.getY())) {
                     yAligned = true;
                     groundY = mutant.findGroundY();
                     mutant.setDeltaMovement(Vec3.ZERO);
@@ -3676,8 +3705,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
                 return;
             }
             if (!grounded) {
-                mutant.getMoveControl().setWantedPosition(mutant.getX(), groundY, mutant.getZ(), 1.0D);
-                if (Math.abs(mutant.getY() - groundY) <= mutant.getBoundingBox().getSize()) {
+                if (mutant.moveToAttackHeight(groundY)) {
                     grounded = true;
                     mutant.setDeltaMovement(Vec3.ZERO);
                 }
@@ -3780,8 +3808,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void alignToTargetY() {
-            mutant.getMoveControl().setWantedPosition(mutant.getX(), target.getY(), mutant.getZ(), 1.0D);
-            if (Math.abs(mutant.getY() - target.getY()) <= mutant.getBoundingBox().getSize()) {
+            if (mutant.moveToAttackHeight(target.getY())) {
                 groundY = mutant.findGroundY();
                 mutant.setDeltaMovement(Vec3.ZERO);
                 attackPhase = PHASE_DESCEND;
@@ -3789,8 +3816,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void descendToGround() {
-            mutant.getMoveControl().setWantedPosition(mutant.getX(), groundY, mutant.getZ(), 1.0D);
-            if (Math.abs(mutant.getY() - groundY) <= mutant.getBoundingBox().getSize()) {
+            if (mutant.moveToAttackHeight(groundY)) {
                 mutant.setDeltaMovement(Vec3.ZERO);
                 arenaCenter = mutant.position();
                 phaseTimer = PHASE_THREE_PREPARE_TIME;
@@ -3970,8 +3996,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void alignToTargetY() {
-            mutant.getMoveControl().setWantedPosition(mutant.getX(), target.getY(), mutant.getZ(), 1.0D);
-            if (Math.abs(mutant.getY() - target.getY()) <= mutant.getBoundingBox().getSize()) {
+            if (mutant.moveToAttackHeight(target.getY())) {
                 groundY = mutant.findGroundY();
                 mutant.setDeltaMovement(Vec3.ZERO);
                 attackPhase = PHASE_DESCEND;
@@ -3979,8 +4004,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void descendToGround() {
-            mutant.getMoveControl().setWantedPosition(mutant.getX(), groundY, mutant.getZ(), 1.0D);
-            if (Math.abs(mutant.getY() - groundY) <= mutant.getBoundingBox().getSize()) {
+            if (mutant.moveToAttackHeight(groundY)) {
                 mutant.setDeltaMovement(Vec3.ZERO);
                 arenaCenter = mutant.position();
                 phaseTimer = PHASE_THREE_PREPARE_TIME;
@@ -4074,6 +4098,8 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void detachRestrictionRing() {
+            arenaCenter = new Vec3(arenaCenter.x,
+                    mutant.clearGroundPlacement(arenaCenter.x, arenaCenter.y, arenaCenter.z), arenaCenter.z);
             AABB searchArea = new AABB(arenaCenter, arenaCenter).inflate(RESTRICTION_BOUNDARY_RADIUS + 8.0D);
             for (RotatingSoulShieldEntity shield : mutant.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
                     shield -> shield.getCaster() == mutant)) {
@@ -4189,8 +4215,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void alignToTargetY() {
-            mutant.getMoveControl().setWantedPosition(mutant.getX(), target.getY(), mutant.getZ(), 1.0D);
-            if (Math.abs(mutant.getY() - target.getY()) <= mutant.getBoundingBox().getSize()) {
+            if (mutant.moveToAttackHeight(target.getY())) {
                 groundY = mutant.findGroundY();
                 mutant.setDeltaMovement(Vec3.ZERO);
                 attackPhase = PHASE_DESCEND;
@@ -4198,8 +4223,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void descendToGround() {
-            mutant.getMoveControl().setWantedPosition(mutant.getX(), groundY, mutant.getZ(), 1.0D);
-            if (Math.abs(mutant.getY() - groundY) <= mutant.getBoundingBox().getSize()) {
+            if (mutant.moveToAttackHeight(groundY)) {
                 mutant.setDeltaMovement(Vec3.ZERO);
                 phaseTimer = PHASE_FOUR_ATTACK_PREPARE_TIME;
                 attackPhase = PHASE_PREPARE;
@@ -4387,8 +4411,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void alignToTargetY() {
-            mutant.getMoveControl().setWantedPosition(mutant.getX(), target.getY(), mutant.getZ(), 1.0D);
-            if (Math.abs(mutant.getY() - target.getY()) <= mutant.getBoundingBox().getSize()) {
+            if (mutant.moveToAttackHeight(target.getY())) {
                 groundY = mutant.findGroundY();
                 mutant.setDeltaMovement(Vec3.ZERO);
                 attackPhase = PHASE_DESCEND;
@@ -4396,8 +4419,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void descendToGround() {
-            mutant.getMoveControl().setWantedPosition(mutant.getX(), groundY, mutant.getZ(), 1.0D);
-            if (Math.abs(mutant.getY() - groundY) <= mutant.getBoundingBox().getSize()) {
+            if (mutant.moveToAttackHeight(groundY)) {
                 mutant.setDeltaMovement(Vec3.ZERO);
                 phaseTimer = FINAL_SPARK_FIRST_LASER_WAIT_TIME;
                 attackPhase = PHASE_WAIT_FIRST_LASER;
@@ -4602,8 +4624,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void alignToTargetY() {
-            mutant.getMoveControl().setWantedPosition(mutant.getX(), target.getY(), mutant.getZ(), 1.0D);
-            if (Math.abs(mutant.getY() - target.getY()) <= mutant.getBoundingBox().getSize()) {
+            if (mutant.moveToAttackHeight(target.getY())) {
                 groundY = mutant.findGroundY();
                 mutant.setDeltaMovement(Vec3.ZERO);
                 attackPhase = PHASE_DESCEND;
@@ -4611,8 +4632,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         private void descendToGround() {
-            mutant.getMoveControl().setWantedPosition(mutant.getX(), groundY, mutant.getZ(), 1.0D);
-            if (Math.abs(mutant.getY() - groundY) <= mutant.getBoundingBox().getSize()) {
+            if (mutant.moveToAttackHeight(groundY)) {
                 mutant.setDeltaMovement(Vec3.ZERO);
                 phaseTimer = PHASE_FOUR_ATTACK_PREPARE_TIME;
                 attackPhase = PHASE_PREPARE;
