@@ -114,7 +114,7 @@ public class FargoBosses {
         }
     }
 
-
+        /*
     @SubscribeEvent
     public void debugDifficulty(MobSpawnEvent event){
         if(event.getEntity() instanceof AbominationEntity abom){
@@ -125,7 +125,7 @@ public class FargoBosses {
             ((MutantEntity) mutant).setBossDifficulty(1);
         }
     }
-
+        */
 
     public static ResourceLocation rl(String path) {
         return new ResourceLocation(MODID, path);

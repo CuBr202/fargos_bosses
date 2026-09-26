@@ -1,5 +1,14 @@
 {
   "entity.fargo_bosses.abomination": "Abomination",
   "entity.fargo_bosses.mutant": "Mutant",
+  "entity.fargo_bosses.free_fortuna_bomb": "Fortuna Dice Bomb",
+  "entity.fargo_bosses.rotating_soul_shield": "Rotating Soul Shield",
+  "entity.fargo_bosses.flexible_energy_beam": "Directional Energy Beam",
+  "entity.fargo_bosses.mutant_laser_beam": "Mutant's Laser Beam",
+  "entity.fargo_bosses.mutant_leviathan_laser": "Mutant's Abyssal Laser",
+  "entity.fargo_bosses.mutant_magnetic_weapon": "Mutant's Magnetic Weapon",
+  "entity.fargo_bosses.mutant_spinning_peppermint": "Mutant's Spinning Peppermint",
+  "entity.fargo_bosses.mutant_extinction_spear": "Mutant's Extinction Spear",
+  "entity.fargo_bosses.frost_spirit": "Frost Spirit",
   "effect.fargo_bosses.mutant_inversion": "Mutant Inversion"
 }

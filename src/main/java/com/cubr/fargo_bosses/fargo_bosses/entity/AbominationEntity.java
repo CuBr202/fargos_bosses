@@ -73,79 +73,78 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
 
     public static final int ATK_DICE = 0, ATK_CHIPS_CIRCLE = 1, ATK_DASH = 2, ATK_DAGGER = 3, ATK_LINEAR = 4, ATK_LASER = 5, ATK_SUMMON = 6, ATK_BOMB = 7;
 
-    // Settings
-    private static final int DICE_ATTACK_DELAY = 15; // 30, 15, 10
-    private static final int DICE_ATTACK_AFTER_COOLDOWN = 20; // 40, 20, 0
-
-    private static final int DICE_AMOUNT_PHASE_1 = 8; // 6, 8, 8
-    private static final int DICE_AMOUNT_PHASE_2 = 12; // 8, 12, 12
-
-    private static final int CHIPS_ATTACK_DELAY = 20; // 40, 20, 10
-
-    private static final int CHIPS_CIRCLE_DELAY = 10; // 20, 10, 10
-    private static final int CHIPS_ATTACK_AFTER_COOLDOWN = 20; // 40, 20, 0
-
-    private static final int DAGGER_WAVES = 4; // 3, 4, 5
-    private static final int DAGGERS_PER_WAVE = 12; // 8, 12, 12
-    private static final int DAGGER_ALIGN_TIME = 10; // 10, 10, 10
-    private static final int DAGGER_WAVE_INTERVAL = 20; // 30, 20, 16
-    private static final int DAGGER_REST_TIME = 160; // 200, 160, 160
-    private static final int DAGGER_DRIFT_INTERVAL = 15; // 15, 15, 15
-    private static final float DAGGER_DAMAGE = 6.0F; // 6.0, 6.0, 6.0
-    private static final float DAGGER_SPEED = 0.7F; // 0.7, 0.7, 0.6
-    private static final int DAGGER_RETURN_TICK = 80; // 90, 80, 70
-
-    private static final int DASH_ATTACK_AFTER_COOLDOWN = 20; // 40, 20, 0
-    private static final int DASH_ATTACK_COUNT = 5; // 5, 5, 5
-    private static final int DASH_WINDUP = 5; // 10, 5, 3
-    private static final int DASH_TIME = 10; // 10, 10, 10
-    private static final int DASH_RECOVER = 5; // 10, 5, 3
-    private static final double DASH_SPEED = 2; // 1.5, 2, 2.5
-
-    private static final int LINEAR_ATTACK_AMOUNT = 10; // 5, 10, 10
-    private static final int LINEAR_ATTACK_WINDUP = 30; // 40, 30, 20
-    private static final int LINEAR_ATTACK_COUNT = 20; // 15, 20, 25
-    private static final int LINEAR_ATTACK_INTERVAL = 30; // 40, 30, 30
-    private static final int LINEAR_ATTACK_INTERVAL_FINAL = 10; // 20, 10, 8
-    private static final int LINEAR_ATTACK_DISTANCE = 7; // 7, 7, 7
-
-    public static final double SUMMONED_ROSE_SPIRIT_HEALTH = 40.0D; // 20, 40, 60
-    public static final double SUMMONED_ROSE_SPIRIT_ARMOR = 5.0D; // 0, 5, 5
     public static final String SUMMONED_ROSE_SPIRIT_DAMAGE_TAG = "fargo_summoned_rose_damage";
     public static final String MYF_PROJECTILE_DAMAGE_TAG = "fargo_myf_projectile_damage";
-    private static final int SUMMON_ATTACK_PHASE_1_COUNT = 3; // 2, 3, 3
-    private static final int SUMMON_ATTACK_PHASE_2_COUNT = 6; // 4, 6, 6
-    private static final int SUMMON_ATTACK_REST_TIME = 15 * 20; // 300, 300, 300
-    private static final double SUMMON_ATTACK_RADIUS = 3.0D; // 3, 3, 3
-    private static final int BOMB_ATTACK_PHASE_1_ROUNDS = 1; // 1, 1, 1
-    private static final int BOMB_ATTACK_PHASE_2_ROUNDS = 3; // 2, 3, 3
-    private static final int BOMB_ATTACK_MINE_COUNT = 12; // 12, 12, 12
-    private static final int BOMB_ATTACK_ROUND_INTERVAL = 80; // 100, 80, 70
-    private static final int BOMB_ATTACK_DETONATION_GRACE_TIME = 20; // 20, 20, 20
-    private static final double BOMB_ATTACK_SAFETY_RADIUS = 3.0D; // 4.0, 3.0, 2.0
-    private static final double BOMB_ATTACK_SAFETY_MIN_DISTANCE = 12.0D; // 10.0, 12.0, 13.0
-    private static final int BOMB_ATTACK_SAFETY_PARTICLES = 16; // 16, 16, 16
-    private static final int BOMB_ATTACK_SAFETY_PARTICLE_INTERVAL = 5; // 5, 5, 5
-    private static final double BOMB_ATTACK_BOSS_ABOVE_OFFSET = 2.0D; // 2, 2, 2
-    private static final double BOMB_ATTACK_BOSS_MOVE_SPEED = 2.0D; // 2, 2, 2.5
-
-    private static final int LASER_ALIGN_TIME = 20; // 40, 20, 20
-    private static final double LASER_MOVE_SPEED = 3.0D; // 3.0, 3.0, 3.0
-    private static final double LASER_START_REACH_DISTANCE = 0.5D; // 0.5, 0.5, 0.5
-    private static final int LASER_MIN_REPEATS = 2; // 2, 2, 3
-    private static final int LASER_MAX_REPEATS = 2; // 2, 2, 3
-    private static final float LASER_MAX_HEALTH_DAMAGE = 0.0F; // 0, 0, 0
-    private static final double LASER_RING_CLEARANCE = 8.0D; // 8.0, 8.0, 7.0
-    private static final float LASER_SIDE_OFFSET = 2.0F;  // 2.0, 2.0, 2.0
-    private static final int LASER_ATTACK_AFTER_COOLDOWN = 20; // 40, 20, 0
-    private static final int LASER_ATTACK_THUNDER_ROUNDS = 7; // 7, 7, 9
-    private static final int LASER_ATTACK_THUNDER_WARMUP = 0; // 0, 0, 0
     private static final int LASER_ATTACK_THUNDER_MAX_LIFETIME = Integer.MAX_VALUE;
-    private static final float LASER_ATTACK_THUNDER_DAMAGE = 5.0F; // 5.0, 5.0, 5.0
-    private static final double LASER_ATTACK_THUNDER_JITTER = 4.0D; // 2.0, 4.0, 4.0
-
-
     private static final float RESTRICTION_BOUNDARY_ORBIT_SPEED = Mth.TWO_PI / 160.0F;
+
+    // Difficulty settings are loaded after config initialization, never in createAttributes().
+    private int HP = 300;
+    private float BOSS_DAMAGE = 33F;
+    private float BORDER_DAMAGE = 66F;
+    private float LASER_DAMAGE = 88F;
+    private boolean ENABLE_SOUL_FRACTURE = false;
+    private float PHASE_1_THRESHOLD = 2.0F / 3.0F;
+    private int DICE_DELAY = 15;
+    private int DICE_COOLDOWN = 20;
+    private int DICE_PHASE_1_AMOUNT = 8;
+    private int DICE_PHASE_2_AMOUNT = 12;
+    private int CHIPS_DELAY = 20;
+    private int CHIPS_CIRCLE_DELAY = 10;
+    private int CHIPS_COOLDOWN = 20;
+    private int DAGGER_WAVES = 4;
+    private int DAGGERS_PER_WAVE = 12;
+    private int DAGGER_ALIGN_TIME = 10;
+    private int DAGGER_WAVE_INTERVAL = 20;
+    private int DAGGER_REST_TIME = 160;
+    private int DAGGER_DRIFT_INTERVAL = 15;
+    private float DAGGER_SPEED = 0.7F;
+    private int DAGGER_RETURN_TICK = 80;
+    private int DASH_COOLDOWN = 20;
+    private int DASH_COUNT = 5;
+    private int DASH_WINDUP = 5;
+    private int DASH_TIME = 10;
+    private int DASH_RECOVER = 5;
+    private double DASH_SPEED = 2D;
+    private int LINEAR_AMOUNT = 10;
+    private int LINEAR_WINDUP = 30;
+    private int LINEAR_COUNT = 20;
+    private int LINEAR_INTERVAL = 30;
+    private int LINEAR_FINAL_INTERVAL = 10;
+    private int LINEAR_DISTANCE = 7;
+    private double ROSE_HEALTH = 40D;
+    private double ROSE_ARMOR = 5D;
+    private int SUMMON_PHASE_1_COUNT = 3;
+    private int SUMMON_PHASE_2_COUNT = 6;
+    private int SUMMON_REST_TIME = 300;
+    private double SUMMON_RADIUS = 3D;
+    private int BOMB_PHASE_1_ROUNDS = 1;
+    private int BOMB_PHASE_2_ROUNDS = 3;
+    private int BOMB_MINE_COUNT = 12;
+    private int BOMB_INTERVAL = 80;
+    private int BOMB_DETONATION_GRACE_TIME = 20;
+    private double BOMB_SAFETY_RADIUS = 3D;
+    private double BOMB_SAFETY_DISTANCE = 12D;
+    private double BOMB_BOSS_OFFSET = 2D;
+    private double BOMB_BOSS_SPEED = 2D;
+    private int BOMB_SAFETY_PARTICLES = 16;
+    private int BOMB_SAFETY_PARTICLE_INTERVAL = 5;
+    private int LASER_ALIGN_TIME = 20;
+    private double LASER_MOVE_SPEED = 3D;
+    private double LASER_START_REACH_DISTANCE = 0.5D;
+    private int LASER_CHARGE_TIME = 10;
+    private int LASER_SWEEP_TIME = 80;
+    private int LASER_BEAM_END_BUFFER = 0;
+    private int LASER_REPEATS = 2;
+    private float LASER_MAX_HEALTH_DAMAGE = 0F;
+    private double LASER_RING_CLEARANCE = 8D;
+    private float LASER_SIDE_OFFSET = 2F;
+    private int LASER_COOLDOWN = 20;
+    private int LASER_THUNDER_ROUNDS = 4;
+    private int LASER_THUNDER_WARMUP = 0;
+    private double LASER_THUNDER_JITTER = 4D;
+    private int RESTRICTION_SHIELDS = 24;
+    private float RESTRICTION_RADIUS = 25F;
 
     public int phase;
     private int phaseTimer, attackCooldown, nextAttack;
@@ -176,6 +175,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
 
     public void setBossDifficulty(int difficulty) {
         entityData.set(BOSS_DIFFICULTY, Mth.clamp(difficulty, 0, 2));
+        applyDifficultySettings();
         applyDifficultyHealth(false);
     }
 
@@ -199,45 +199,118 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
 
     private void applyDifficultyHealth(boolean refillHealth) {
         if (getAttribute(Attributes.MAX_HEALTH) != null) {
-            getAttribute(Attributes.MAX_HEALTH).setBaseValue(configInt(Config.ABOMINATION_HP));
+            getAttribute(Attributes.MAX_HEALTH).setBaseValue(HP);
             if (refillHealth) heal(getMaxHealth());
         }
     }
 
-    private int configInt(net.minecraftforge.common.ForgeConfigSpec.ConfigValue<List<? extends Integer>> value) {
-        return Config.abominationInt(value, getBossDifficulty());
+    private int configInt(String key) {
+        return Config.abominationInt(key, getBossDifficulty());
     }
 
-    private double configDouble(net.minecraftforge.common.ForgeConfigSpec.ConfigValue<List<? extends Double>> value) {
-        return Config.abominationDouble(value, getBossDifficulty());
+    private double configDouble(String key) {
+        return Config.abominationDouble(key, getBossDifficulty());
     }
 
-    private float configFloat(net.minecraftforge.common.ForgeConfigSpec.ConfigValue<List<? extends Double>> value) {
-        return (float) configDouble(value);
+    private float configFloat(String key) {
+        return (float) configDouble(key);
+    }
+
+    private boolean configBoolean(String key) {
+        return Config.abominationBoolean(key, getBossDifficulty());
+    }
+
+    private void applyDifficultySettings() {
+        HP = configInt("HP");
+        BOSS_DAMAGE = configFloat("BOSS_DAMAGE");
+        BORDER_DAMAGE = configFloat("BORDER_DAMAGE");
+        LASER_DAMAGE = configFloat("LASER_DAMAGE");
+        ENABLE_SOUL_FRACTURE = configBoolean("ENABLE_SOUL_FRACTURE");
+        PHASE_1_THRESHOLD = configFloat("PHASE_1_THRESHOLD");
+        DICE_DELAY = configInt("DICE_DELAY");
+        DICE_COOLDOWN = configInt("DICE_COOLDOWN");
+        DICE_PHASE_1_AMOUNT = configInt("DICE_PHASE_1_AMOUNT");
+        DICE_PHASE_2_AMOUNT = configInt("DICE_PHASE_2_AMOUNT");
+        CHIPS_DELAY = configInt("CHIPS_DELAY");
+        CHIPS_CIRCLE_DELAY = configInt("CHIPS_CIRCLE_DELAY");
+        CHIPS_COOLDOWN = configInt("CHIPS_COOLDOWN");
+        DAGGER_WAVES = configInt("DAGGER_WAVES");
+        DAGGERS_PER_WAVE = configInt("DAGGERS_PER_WAVE");
+        DAGGER_ALIGN_TIME = configInt("DAGGER_ALIGN_TIME");
+        DAGGER_WAVE_INTERVAL = configInt("DAGGER_WAVE_INTERVAL");
+        DAGGER_REST_TIME = configInt("DAGGER_REST_TIME");
+        DAGGER_DRIFT_INTERVAL = configInt("DAGGER_DRIFT_INTERVAL");
+        DAGGER_SPEED = configFloat("DAGGER_SPEED");
+        DAGGER_RETURN_TICK = configInt("DAGGER_RETURN_TICK");
+        DASH_COOLDOWN = configInt("DASH_COOLDOWN");
+        DASH_COUNT = configInt("DASH_COUNT");
+        DASH_WINDUP = configInt("DASH_WINDUP");
+        DASH_TIME = configInt("DASH_TIME");
+        DASH_RECOVER = configInt("DASH_RECOVER");
+        DASH_SPEED = configDouble("DASH_SPEED");
+        LINEAR_AMOUNT = configInt("LINEAR_AMOUNT");
+        LINEAR_WINDUP = configInt("LINEAR_WINDUP");
+        LINEAR_COUNT = configInt("LINEAR_COUNT");
+        LINEAR_INTERVAL = configInt("LINEAR_INTERVAL");
+        LINEAR_FINAL_INTERVAL = configInt("LINEAR_FINAL_INTERVAL");
+        LINEAR_DISTANCE = configInt("LINEAR_DISTANCE");
+        ROSE_HEALTH = configDouble("ROSE_HEALTH");
+        ROSE_ARMOR = configDouble("ROSE_ARMOR");
+        SUMMON_PHASE_1_COUNT = configInt("SUMMON_PHASE_1_COUNT");
+        SUMMON_PHASE_2_COUNT = configInt("SUMMON_PHASE_2_COUNT");
+        SUMMON_REST_TIME = configInt("SUMMON_REST_TIME");
+        SUMMON_RADIUS = configDouble("SUMMON_RADIUS");
+        BOMB_PHASE_1_ROUNDS = configInt("BOMB_PHASE_1_ROUNDS");
+        BOMB_PHASE_2_ROUNDS = configInt("BOMB_PHASE_2_ROUNDS");
+        BOMB_MINE_COUNT = configInt("BOMB_MINE_COUNT");
+        BOMB_INTERVAL = configInt("BOMB_INTERVAL");
+        BOMB_DETONATION_GRACE_TIME = configInt("BOMB_DETONATION_GRACE_TIME");
+        BOMB_SAFETY_RADIUS = configDouble("BOMB_SAFETY_RADIUS");
+        BOMB_SAFETY_DISTANCE = configDouble("BOMB_SAFETY_DISTANCE");
+        BOMB_BOSS_OFFSET = configDouble("BOMB_BOSS_OFFSET");
+        BOMB_BOSS_SPEED = configDouble("BOMB_BOSS_SPEED");
+        BOMB_SAFETY_PARTICLES = configInt("BOMB_SAFETY_PARTICLES");
+        BOMB_SAFETY_PARTICLE_INTERVAL = configInt("BOMB_SAFETY_PARTICLE_INTERVAL");
+        LASER_ALIGN_TIME = configInt("LASER_ALIGN_TIME");
+        LASER_MOVE_SPEED = configDouble("LASER_MOVE_SPEED");
+        LASER_START_REACH_DISTANCE = configDouble("LASER_START_REACH_DISTANCE");
+        LASER_CHARGE_TIME = configInt("LASER_CHARGE_TIME");
+        LASER_SWEEP_TIME = configInt("LASER_SWEEP_TIME");
+        LASER_BEAM_END_BUFFER = configInt("LASER_BEAM_END_BUFFER");
+        LASER_REPEATS = configInt("LASER_REPEATS");
+        LASER_MAX_HEALTH_DAMAGE = configFloat("LASER_MAX_HEALTH_DAMAGE");
+        LASER_RING_CLEARANCE = configDouble("LASER_RING_CLEARANCE");
+        LASER_SIDE_OFFSET = configFloat("LASER_SIDE_OFFSET");
+        LASER_COOLDOWN = configInt("LASER_COOLDOWN");
+        LASER_THUNDER_ROUNDS = configInt("LASER_THUNDER_ROUNDS");
+        LASER_THUNDER_WARMUP = configInt("LASER_THUNDER_WARMUP");
+        LASER_THUNDER_JITTER = configDouble("LASER_THUNDER_JITTER");
+        RESTRICTION_SHIELDS = configInt("RESTRICTION_SHIELDS");
+        RESTRICTION_RADIUS = configFloat("RESTRICTION_RADIUS");
     }
 
     public float getBossDamage() {
-        return configFloat(Config.ABOMINATION_BOSS_DAMAGE);
+        return BOSS_DAMAGE;
     }
 
     public float getBorderDamage() {
-        return configFloat(Config.ABOMINATION_BORDER_DAMAGE);
+        return BORDER_DAMAGE;
     }
 
     public float getLaserDamage() {
-        return configFloat(Config.ABOMINATION_LASER_DAMAGE);
+        return LASER_DAMAGE;
     }
 
     public boolean isSoulFractureEnabled() {
-        return Config.abominationBoolean(Config.ABOMINATION_ENABLE_SOUL_FRACTURE, getBossDifficulty());
+        return ENABLE_SOUL_FRACTURE;
     }
 
     private int restrictionBoundaryShieldCount() {
-        return configInt(Config.ABOMINATION_RESTRICTION_SHIELDS);
+        return RESTRICTION_SHIELDS;
     }
 
     private float restrictionBoundaryRadius() {
-        return configFloat(Config.ABOMINATION_RESTRICTION_RADIUS);
+        return RESTRICTION_RADIUS;
     }
 
     private double bombAttackMineRadius() {
@@ -475,7 +548,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
             super.customServerAiStep();
             return;
         }
-        if (phase == PHASE_1 && getHealth() <= getMaxHealth() * configFloat(Config.ABOMINATION_PHASE_1_THRESHOLD)) {
+        if (phase == PHASE_1 && getHealth() <= getMaxHealth() * PHASE_1_THRESHOLD) {
             beginPhase1Transition();
         }
         else if (phase == PHASE_2 && getHealth() <= 1.0F) {
@@ -683,6 +756,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         attackCooldown = compound.getInt("AttackCooldown");
         nextAttack = compound.getInt("NxtAt");
         entityData.set(BOSS_DIFFICULTY, Mth.clamp(compound.getInt("BossDifficulty"), 0, 2));
+        applyDifficultySettings();
         applyDifficultyHealth(false);
         restrictionBoundaryCreated = compound.getBoolean("RestrictionBoundaryCreated");
         bombSafetyX = compound.getDouble("BombSafetyX");
@@ -721,7 +795,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
     }
 
     public boolean isInsideBombSafetyCircle(LivingEntity entity) {
-        double radius = configDouble(Config.ABOMINATION_BOMB_SAFETY_RADIUS);
+        double radius = BOMB_SAFETY_RADIUS;
         return bombSafetyTicks > 0 && entity.distanceToSqr(bombSafetyX, entity.getY(), bombSafetyZ) <= radius * radius;
     }
 
@@ -754,7 +828,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
             target = abom.getTarget();
             headTargetYaw = abom.yHeadRot;
             //abom.setAnimation(ANIM_DICE_WINDUP);
-            attackDelay = getPhaseDelay(abom.configInt(Config.ABOMINATION_DICE_DELAY));
+            attackDelay = getPhaseDelay(abom.DICE_DELAY);
             attackRemaining = getAttackCount();
             abom.playSound(MYFSounds.dameFortunaAttack.get(), abom.getSoundVolume(), abom.getVoicePitch());
         }
@@ -767,10 +841,10 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         }
 
         private int getSplitDirectionCount() {
-            if (abom.phase == PHASE_1) return abom.configInt(Config.ABOMINATION_DICE_PHASE_1_AMOUNT);
+            if (abom.phase == PHASE_1) return abom.DICE_PHASE_1_AMOUNT;
             //Phase 1
-            else if(abom.phase == PHASE_2) return abom.configInt(Config.ABOMINATION_DICE_PHASE_2_AMOUNT);
-            return abom.configInt(Config.ABOMINATION_DICE_PHASE_2_AMOUNT);
+            else if(abom.phase == PHASE_2) return abom.DICE_PHASE_2_AMOUNT;
+            return abom.DICE_PHASE_2_AMOUNT;
         }
 
         private int getPhaseDelay(int normalDelay) {
@@ -829,7 +903,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
                 }
                 return;
             }
-            abom.setCooldownNextAttack(abom.configInt(Config.ABOMINATION_DICE_COOLDOWN));
+            abom.setCooldownNextAttack(abom.DICE_COOLDOWN);
             abom.rollNextAttack(ATK_DICE);
             //if we going to shuffle phase, let that handle the next animation
             //if (abom.isAttackPhase()) abom.setAnimation(ANIM_IDLE);
@@ -862,9 +936,9 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
             super.start();
             target = abom.getTarget();
             //abom.setAnimation(ANIM_CHIPS_WINDUP);
-            attackDelay = abom.configInt(Config.ABOMINATION_CHIPS_DELAY);
+            attackDelay = abom.CHIPS_DELAY;
             attackRemaining = 3;
-            circleDelay = abom.configInt(Config.ABOMINATION_CHIPS_CIRCLE_DELAY);
+            circleDelay = abom.CHIPS_CIRCLE_DELAY;
             circleDirection = abom.random.nextBoolean() ? 1 : -1;
             clapTime = 12;
             abom.playSound(MYFSounds.dameFortunaAttack.get(), abom.getSoundVolume(), abom.getVoicePitch());
@@ -895,7 +969,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         }
 
         private void performAttack() {
-            attackDelay = attackRemaining > 0 ? abom.configInt(Config.ABOMINATION_CHIPS_DELAY) : abom.configInt(Config.ABOMINATION_CHIPS_DELAY) + 10;
+            attackDelay = attackRemaining > 0 ? abom.CHIPS_DELAY : abom.CHIPS_DELAY + 10;
             fireChipsCircle(8, 1, circleDelay + 5 * attackRemaining);
             if (attackRemaining > 0) {
                 rotateAroundTarget();
@@ -940,7 +1014,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
 
         @Override
         public void stop() {
-            abom.setCooldownNextAttack(abom.configInt(Config.ABOMINATION_CHIPS_COOLDOWN));
+            abom.setCooldownNextAttack(abom.CHIPS_COOLDOWN);
             abom.rollNextAttack(ATK_CHIPS_CIRCLE);
             //if (abom.isAttackPhase()) abom.setAnimation(ANIM_IDLE);
         }
@@ -971,10 +1045,10 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         public void start() {
             super.start();
             target = abom.getTarget();
-            wavesRemaining = abom.configInt(Config.ABOMINATION_DAGGER_WAVES);
+            wavesRemaining = abom.DAGGER_WAVES;
             attackDelay = 0;
             restTime = 0;
-            alignTime = abom.configInt(Config.ABOMINATION_DAGGER_ALIGN_TIME);
+            alignTime = abom.DAGGER_ALIGN_TIME;
             driftTime = 0;
             driftDirection = abom.random.nextBoolean() ? 1 : -1;
             aligning = true;
@@ -1014,10 +1088,10 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
                 //abom.setAnimation(ANIM_DAGGER_THROW);
                 throwDaggerWave();
                 if (wavesRemaining > 0) {
-                    attackDelay = abom.configInt(Config.ABOMINATION_DAGGER_WAVE_INTERVAL) - 1;
+                    attackDelay = abom.DAGGER_WAVE_INTERVAL - 1;
                 }
                 else {
-                    restTime = abom.configInt(Config.ABOMINATION_DAGGER_REST_TIME);
+                    restTime = abom.DAGGER_REST_TIME;
                     //abom.setAnimation(ANIM_DAGGER_REST);
                 }
             }
@@ -1029,7 +1103,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
             double sz = abom.getZ();
             double randomOffset = abom.random.nextDouble();
 
-            int daggerCount = abom.configInt(Config.ABOMINATION_DAGGERS_PER_WAVE);
+            int daggerCount = abom.DAGGERS_PER_WAVE;
             for (int i = 0; i < daggerCount; i++) {
                 double angle = (i / (double) daggerCount + randomOffset) * Mth.TWO_PI;
                 double dx = Math.cos(angle);
@@ -1038,12 +1112,12 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
                 AbominationPhantomDaggerEntity dagger = new AbominationPhantomDaggerEntity(net.miauczel.legendary_monsters.entity.ModEntities.THROWN_PHANTOM_DAGGER.get(), abom.level());
                 dagger.setOwner(abom);
                 dagger.setReturnEntity(abom);
-                dagger.setReturnTick(abom.configInt(Config.ABOMINATION_DAGGER_RETURN_TICK));
-                dagger.setDamage(abom.configFloat(Config.ABOMINATION_DAGGER_DAMAGE));
+                dagger.setReturnTick(abom.DAGGER_RETURN_TICK);
+                dagger.setDamage(abom.getBossDamage());
                 dagger.setRed(true);
                 dagger.setPos(sx, sy, sz);
                 dagger.setYRot((float) Math.toDegrees(Math.atan2(dz, dx)) - 90.0F);
-                dagger.shoot(dx, 0, dz, abom.configFloat(Config.ABOMINATION_DAGGER_SPEED), 0.0F);
+                dagger.shoot(dx, 0, dz, abom.DAGGER_SPEED, 0.0F);
                 abom.level().addFreshEntity(dagger);
             }
 
@@ -1057,7 +1131,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
                 return;
             }
 
-            driftTime = abom.configInt(Config.ABOMINATION_DAGGER_DRIFT_INTERVAL);
+            driftTime = abom.DAGGER_DRIFT_INTERVAL;
             float angle = (abom.random.nextInt(4) + 2) * 10.0F * Mth.DEG_TO_RAD * driftDirection;
             Vec3 offset = new Vec3(abom.getX() - target.getX(), 0, abom.getZ() - target.getZ());
             if (offset.lengthSqr() < 1.0E-4) {
@@ -1107,7 +1181,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         public void start() {
             super.start();
             target = abom.getTarget();
-            restTime = abom.configInt(Config.ABOMINATION_SUMMON_REST_TIME);
+            restTime = abom.SUMMON_REST_TIME;
             summonRoseSpirits();
             abom.playSound(MYFSounds.dameFortunaAttack.get(), abom.getSoundVolume(), abom.getVoicePitch());
         }
@@ -1119,7 +1193,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         }
 
         private void summonRoseSpirits() {
-            int count = abom.phase == PHASE_1 ? abom.configInt(Config.ABOMINATION_SUMMON_PHASE_1_COUNT) : abom.configInt(Config.ABOMINATION_SUMMON_PHASE_2_COUNT);
+            int count = abom.phase == PHASE_1 ? abom.SUMMON_PHASE_1_COUNT : abom.SUMMON_PHASE_2_COUNT;
             for (int i = 0; i < count; i++) {
                 double angle = i * Mth.TWO_PI / count;
                 RoseSpiritEntity spirit = MYFEntities.ROSE_SPIRIT.get().create(abom.level());
@@ -1128,13 +1202,13 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
                 }
 
                 spirit.setPos(
-                        abom.getX() + Math.cos(angle) * abom.configDouble(Config.ABOMINATION_SUMMON_RADIUS),
+                        abom.getX() + Math.cos(angle) * abom.SUMMON_RADIUS,
                         abom.getY(),
-                        abom.getZ() + Math.sin(angle) * abom.configDouble(Config.ABOMINATION_SUMMON_RADIUS)
+                        abom.getZ() + Math.sin(angle) * abom.SUMMON_RADIUS
                 );
-                spirit.getAttribute(Attributes.MAX_HEALTH).setBaseValue(abom.configDouble(Config.ABOMINATION_ROSE_HEALTH));
-                spirit.getAttribute(Attributes.ARMOR).setBaseValue(abom.configDouble(Config.ABOMINATION_ROSE_ARMOR));
-                spirit.setHealth(abom.configFloat(Config.ABOMINATION_ROSE_HEALTH));
+                spirit.getAttribute(Attributes.MAX_HEALTH).setBaseValue(abom.ROSE_HEALTH);
+                spirit.getAttribute(Attributes.ARMOR).setBaseValue(abom.ROSE_ARMOR);
+                spirit.setHealth((float) abom.ROSE_HEALTH);
                 spirit.getPersistentData().putFloat(SUMMONED_ROSE_SPIRIT_DAMAGE_TAG, abom.getBossDamage());
                 spirit.setOwner(abom);
                 spirit.setTarget(target);
@@ -1180,7 +1254,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         public void start() {
             super.start();
             target = abom.getTarget();
-            roundsRemaining = abom.phase == PHASE_1 ? abom.configInt(Config.ABOMINATION_BOMB_PHASE_1_ROUNDS) : abom.configInt(Config.ABOMINATION_BOMB_PHASE_2_ROUNDS);
+            roundsRemaining = abom.phase == PHASE_1 ? abom.BOMB_PHASE_1_ROUNDS : abom.BOMB_PHASE_2_ROUNDS;
             previousSafetyCircle = null;
             awaitingDetonation = false;
             arenaCenter = abom.position();
@@ -1193,14 +1267,14 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         public void tick() {
             super.tick();
             moveBelowSafetyCircle();
-            if (roundTimer % abom.configInt(Config.ABOMINATION_BOMB_SAFETY_PARTICLE_INTERVAL) == 0) drawSafetyCircle();
+            if (roundTimer % abom.BOMB_SAFETY_PARTICLE_INTERVAL == 0) drawSafetyCircle();
             if (--roundTimer > 0) return;
 
             if (!awaitingDetonation) {
                 summonMines();
-                abom.bombSafetyTicks = abom.configInt(Config.ABOMINATION_BOMB_DETONATION_GRACE);
+                abom.bombSafetyTicks = abom.BOMB_DETONATION_GRACE_TIME;
                 awaitingDetonation = true;
-                roundTimer = abom.configInt(Config.ABOMINATION_BOMB_DETONATION_GRACE);
+                roundTimer = abom.BOMB_DETONATION_GRACE_TIME;
             }
             else if (--roundsRemaining > 0) {
                 awaitingDetonation = false;
@@ -1212,17 +1286,17 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
             Vec3 safetyCircle = chooseSafetyCircle();
             abom.bombSafetyX = safetyCircle.x;
             abom.bombSafetyZ = safetyCircle.z;
-            abom.bombSafetyTicks = abom.configInt(Config.ABOMINATION_BOMB_INTERVAL);
+            abom.bombSafetyTicks = abom.BOMB_INTERVAL;
             previousSafetyCircle = safetyCircle;
-            roundTimer = abom.configInt(Config.ABOMINATION_BOMB_INTERVAL);
+            roundTimer = abom.BOMB_INTERVAL;
             drawSafetyCircle();
         }
 
         private void drawSafetyCircle() {
             if (!(abom.level() instanceof ServerLevel serverLevel)) return;
 
-            int particleCount = abom.configInt(Config.ABOMINATION_BOMB_SAFETY_PARTICLES);
-            double safetyRadius = abom.configDouble(Config.ABOMINATION_BOMB_SAFETY_RADIUS);
+            int particleCount = abom.BOMB_SAFETY_PARTICLES;
+            double safetyRadius = abom.BOMB_SAFETY_RADIUS;
             for (int i = 0; i < particleCount; i++) {
                 double angle = i * Mth.TWO_PI / particleCount;
                 double x = abom.bombSafetyX + Math.cos(angle) * safetyRadius;
@@ -1232,12 +1306,12 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         }
 
         private void moveBelowSafetyCircle() {
-            abom.getMoveControl().setWantedPosition(abom.bombSafetyX, target.getY() + abom.configDouble(Config.ABOMINATION_BOMB_BOSS_OFFSET),
-                    abom.bombSafetyZ, abom.configDouble(Config.ABOMINATION_BOMB_BOSS_SPEED));
+            abom.getMoveControl().setWantedPosition(abom.bombSafetyX, target.getY() + abom.BOMB_BOSS_OFFSET,
+                    abom.bombSafetyZ, abom.BOMB_BOSS_SPEED);
         }
 
         private Vec3 chooseSafetyCircle() {
-            double maxDistance = abom.restrictionBoundaryRadius() - abom.configDouble(Config.ABOMINATION_BOMB_SAFETY_RADIUS);
+            double maxDistance = abom.restrictionBoundaryRadius() - abom.BOMB_SAFETY_RADIUS;
             Vec3 center = new Vec3(arenaCenter.x, 0.0D, arenaCenter.z);
 
             for (int attempt = 0; attempt < 32; attempt++) {
@@ -1245,7 +1319,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
                 double distance = Math.sqrt(abom.random.nextDouble()) * maxDistance;
                 Vec3 candidate = center.add(Math.cos(angle) * distance, 0.0D, Math.sin(angle) * distance);
                 if (previousSafetyCircle == null
-                        || candidate.distanceToSqr(previousSafetyCircle) >= abom.configDouble(Config.ABOMINATION_BOMB_SAFETY_DISTANCE) * abom.configDouble(Config.ABOMINATION_BOMB_SAFETY_DISTANCE)) {
+                        || candidate.distanceToSqr(previousSafetyCircle) >= abom.BOMB_SAFETY_DISTANCE * abom.BOMB_SAFETY_DISTANCE) {
                     return candidate;
                 }
             }
@@ -1258,7 +1332,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         }
 
         private void summonMines() {
-            for (int i = 0; i < abom.configInt(Config.ABOMINATION_BOMB_MINE_COUNT); i++) {
+            for (int i = 0; i < abom.BOMB_MINE_COUNT; i++) {
                 Vec3 minePosition = randomMinePosition(previousSafetyCircle);
                 SwampMineEntity mine = new SwampMineEntity(abom.level(), minePosition.x,
                         target.getY(), minePosition.z, abom);
@@ -1273,7 +1347,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
                 double angle = abom.random.nextDouble() * Mth.TWO_PI;
                 double distance = Math.sqrt(abom.random.nextDouble()) * abom.bombAttackMineRadius();
                 Vec3 candidate = center.add(Math.cos(angle) * distance, 0.0D, Math.sin(angle) * distance);
-                double safetyRadius = abom.configDouble(Config.ABOMINATION_BOMB_SAFETY_RADIUS);
+                double safetyRadius = abom.BOMB_SAFETY_RADIUS;
                 if (candidate.distanceToSqr(safetyCircle) > safetyRadius * safetyRadius) {
                     return candidate;
                 }
@@ -1353,8 +1427,8 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         @Override
         public void start() {
             target = abom.getTarget();
-            attacksRemaining = abom.configInt(Config.ABOMINATION_LINEAR_COUNT);
-            attackDelay = abom.configInt(Config.ABOMINATION_LINEAR_WINDUP);
+            attacksRemaining = abom.LINEAR_COUNT;
+            attackDelay = abom.LINEAR_WINDUP;
             abom.attackCooldown = 2;
 
             BlockPos self = abom.blockPosition();
@@ -1371,9 +1445,9 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
                 return;
             }
 
-            int linearCount = abom.configInt(Config.ABOMINATION_LINEAR_COUNT);
-            int linearInterval = abom.configInt(Config.ABOMINATION_LINEAR_INTERVAL);
-            int linearFinalInterval = abom.configInt(Config.ABOMINATION_LINEAR_FINAL_INTERVAL);
+            int linearCount = abom.LINEAR_COUNT;
+            int linearInterval = abom.LINEAR_INTERVAL;
+            int linearFinalInterval = abom.LINEAR_FINAL_INTERVAL;
             attackDelay = (linearInterval - linearFinalInterval) * attacksRemaining / linearCount + linearFinalInterval;
             attacksRemaining--;
             fireProjectileLine();
@@ -1395,8 +1469,8 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
             double directionX = direction.getStepX();
             double directionZ = direction.getStepZ();
             int offset = attacksRemaining % 2 == 0 ? 1 : -1;
-            int linearAmount = abom.configInt(Config.ABOMINATION_LINEAR_AMOUNT);
-            int linearDistance = abom.configInt(Config.ABOMINATION_LINEAR_DISTANCE);
+            int linearAmount = abom.LINEAR_AMOUNT;
+            int linearDistance = abom.LINEAR_DISTANCE;
             for (int i = -linearAmount; i <= linearAmount; i++) {
                 ProjectileLineEntity projectile = abom.readyLineProjectile();
                 setMyfProjectileDamage(projectile, abom.getBossDamage());
@@ -1470,8 +1544,8 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
             target = abom.getTarget();
             abom.laserAttackActive = true;
             attackPhase = PHASE_ALIGN;
-            phaseTime = abom.configInt(Config.ABOMINATION_LASER_ALIGN_TIME);
-            sweepsRemaining = abom.configInt(Config.ABOMINATION_LASER_REPEATS);
+            phaseTime = abom.LASER_ALIGN_TIME;
+            sweepsRemaining = abom.LASER_REPEATS;
             if (abom.bombArenaDetachedForLaser) {
                 ringCenterX = abom.bombArenaCenterX;
                 ringCenterY = findGroundYAt(ringCenterX, abom.bombArenaCenterY, abom.bombArenaCenterZ);
@@ -1502,7 +1576,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
                 holdAtSweepStart();
                 if (--phaseTime <= 0) {
                     attackPhase = PHASE_SWEEP;
-                    phaseTime = abom.configInt(Config.ABOMINATION_LASER_SWEEP_TIME);
+                    phaseTime = abom.LASER_SWEEP_TIME;
                     abom.playSound(SoundEvents.BEACON_POWER_SELECT, 2.0F, 1.0F);
                 }
             }
@@ -1533,33 +1607,33 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
             }
 
             outward = outward.normalize();
-            double distanceStart = abom.restrictionBoundaryRadius() + abom.configDouble(Config.ABOMINATION_LASER_RING_CLEARANCE);
-            double distanceEnd = abom.restrictionBoundaryRadius() - abom.configDouble(Config.ABOMINATION_LASER_RING_CLEARANCE);
+            double distanceStart = abom.restrictionBoundaryRadius() + abom.LASER_RING_CLEARANCE;
+            double distanceEnd = abom.restrictionBoundaryRadius() - abom.LASER_RING_CLEARANCE;
             sweepStart = new Vec3(ringCenterX + outward.x * distanceStart, ringCenterY, ringCenterZ + outward.z * distanceStart);
             sweepEnd = new Vec3(ringCenterX - outward.x * distanceEnd, ringCenterY, ringCenterZ - outward.z * distanceEnd);
             attackPhase = PHASE_MOVE_TO_START;
         }
 
         private void moveToSweepStart() {
-            abom.getMoveControl().setWantedPosition(sweepStart.x, sweepStart.y, sweepStart.z, abom.configDouble(Config.ABOMINATION_LASER_MOVE_SPEED));
-            double reachDistance = Math.max(abom.configDouble(Config.ABOMINATION_LASER_START_REACH_DISTANCE), abom.getBoundingBox().getSize());
+            abom.getMoveControl().setWantedPosition(sweepStart.x, sweepStart.y, sweepStart.z, abom.LASER_MOVE_SPEED);
+            double reachDistance = Math.max(abom.LASER_START_REACH_DISTANCE, abom.getBoundingBox().getSize());
             if (abom.distanceToSqr(sweepStart.x, sweepStart.y, sweepStart.z) <= reachDistance * reachDistance) {
                 faceRingCenter();
                 lockedSweepYaw = abom.yHeadRot;
                 spawnSideLasers();
                 attackPhase = PHASE_CHARGE;
-                phaseTime = abom.configInt(Config.ABOMINATION_LASER_CHARGE_TIME);
+                phaseTime = abom.LASER_CHARGE_TIME;
                 abom.setDeltaMovement(Vec3.ZERO);
                 abom.playSound(SoundEvents.BEACON_ACTIVATE, 2.0F, 1.0F);
             }
         }
 
         private void spawnSideLasers() {
-            int beamDuration = abom.configInt(Config.ABOMINATION_LASER_CHARGE_TIME)
-                    + abom.configInt(Config.ABOMINATION_LASER_SWEEP_TIME)
-                    + abom.configInt(Config.ABOMINATION_LASER_BEAM_END_BUFFER);
-            float maxHealthDamage = abom.configFloat(Config.ABOMINATION_LASER_MAX_HEALTH_DAMAGE);
-            float sideOffset = abom.configFloat(Config.ABOMINATION_LASER_SIDE_OFFSET);
+            int beamDuration = abom.LASER_CHARGE_TIME
+                    + abom.LASER_SWEEP_TIME
+                    + abom.LASER_BEAM_END_BUFFER;
+            float maxHealthDamage = abom.LASER_MAX_HEALTH_DAMAGE;
+            float sideOffset = abom.LASER_SIDE_OFFSET;
             FlexibleEnergyBeamEntity left = new FlexibleEnergyBeamEntity(ModEntities.FLEXIBLE_ENERGY_BEAM.get(), abom.level(), abom,
                     beamDuration, abom.getLaserDamage(), maxHealthDamage, 90.0F, 0.0F);
             left.setRelativePositionOffset(0.0F, -sideOffset, 0.0F);
@@ -1580,14 +1654,14 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
 
         private void sweepAcrossRing() {
             phaseTime--;
-            int sweepTime = abom.configInt(Config.ABOMINATION_LASER_SWEEP_TIME);
+            int sweepTime = abom.LASER_SWEEP_TIME;
             double progress = 1.0D - phaseTime / (double) sweepTime;
             Vec3 destination = sweepStart.scale(1.0D - progress).add(sweepEnd.scale(progress));
             setFacing(lockedSweepYaw);
             abom.setPos(destination.x, destination.y, destination.z);
             abom.setDeltaMovement(Vec3.ZERO);
 
-            int thunderInterval = Math.max(1, sweepTime / abom.configInt(Config.ABOMINATION_LASER_THUNDER_ROUNDS));
+            int thunderInterval = Math.max(1, sweepTime / abom.LASER_THUNDER_ROUNDS);
             if (phaseTime > 0 && phaseTime % thunderInterval == 0) {
                 spawnThunderRow();
             }
@@ -1614,7 +1688,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         private void spawnThunderRow() {
             Vec3 sweepDirection = sweepEnd.subtract(sweepStart).normalize();
             Vec3 lateral = new Vec3(-sweepDirection.z, 0, sweepDirection.x);
-            int thunderRounds = abom.configInt(Config.ABOMINATION_LASER_THUNDER_ROUNDS);
+            int thunderRounds = abom.LASER_THUNDER_ROUNDS;
             double spacing = abom.restrictionBoundaryRadius() * 2.0D / (thunderRounds - 1);
             double centerOffset = (thunderRounds - 1) * 0.5D;
 
@@ -1624,9 +1698,9 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
                 double z = abom.getZ() + lateral.z * distance + randomJitter();
                 AbominationLightningBoltEntity bolt = new AbominationLightningBoltEntity(
                         abom.level(), x, ringCenterY, z, 0.0F,
-                        abom.configInt(Config.ABOMINATION_LASER_THUNDER_WARMUP), abom,
+                        abom.LASER_THUNDER_WARMUP, abom,
                         LASER_ATTACK_THUNDER_MAX_LIFETIME,
-                        abom.configFloat(Config.ABOMINATION_LASER_THUNDER_DAMAGE)
+                        abom.getBossDamage()
                 );
                 thunderBolts.add(bolt);
                 abom.level().addFreshEntity(bolt);
@@ -1634,7 +1708,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         }
 
         private double randomJitter() {
-            return (abom.random.nextDouble() * 2.0D - 1.0D) * abom.configDouble(Config.ABOMINATION_LASER_THUNDER_JITTER);
+            return (abom.random.nextDouble() * 2.0D - 1.0D) * abom.LASER_THUNDER_JITTER;
         }
 
         private void setFacing(float yaw) {
@@ -1710,7 +1784,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
                 abom.finishPhase3();
                 return;
             }
-            abom.setCooldownNextAttack(abom.phase == PHASE_3 ? 0 : abom.configInt(Config.ABOMINATION_LASER_COOLDOWN));
+            abom.setCooldownNextAttack(abom.phase == PHASE_3 ? 0 : abom.LASER_COOLDOWN);
             abom.rollNextAttack(ATK_LASER);
         }
     }
@@ -1750,7 +1824,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         @Override
         public void start() {
             target = abom.getTarget();
-            dashesRemaining = abom.configInt(Config.ABOMINATION_DASH_COUNT);
+            dashesRemaining = abom.DASH_COUNT;
             dashDirection = Vec3.ZERO;
             beginWindup();
             abom.playSound(MYFSounds.rosalyneSwingPrepare.get(), abom.getSoundVolume(), abom.getVoicePitch());
@@ -1758,9 +1832,9 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
 
         private void beginWindup() {
             attackPhase = PHASE_WINDUP;
-            timer = abom.configInt(Config.ABOMINATION_DASH_WINDUP);
+            timer = abom.DASH_WINDUP;
             if(abom.phase == PHASE_2){
-                timer = abom.configInt(Config.ABOMINATION_DASH_WINDUP) * 2;
+                timer = abom.DASH_WINDUP * 2;
             }
             abom.setDeltaMovement(Vec3.ZERO);
             //abom.setAnimation(ANIM_DASH_WINDUP);
@@ -1783,7 +1857,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
                 }
             }
             else if (attackPhase == PHASE_DASH) {
-                abom.setDeltaMovement(dashDirection.scale(abom.configDouble(Config.ABOMINATION_DASH_SPEED)));
+                abom.setDeltaMovement(dashDirection.scale(abom.DASH_SPEED));
                 hurtDashContacts();
                 if (timer % 2 == 0) {
                     leaveDashTrail();
@@ -1815,7 +1889,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
 
             dashesRemaining--;
             attackPhase = PHASE_DASH;
-            timer = abom.configInt(Config.ABOMINATION_DASH_TIME);
+            timer = abom.DASH_TIME;
             //abom.setAnimation(ANIM_DASH);
             leaveDashTrail();
             abom.playSound(MYFSounds.rosalyneSwing.get(), 1.0F, 1.0F);
@@ -1823,9 +1897,9 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
 
         private void beginRecover() {
             attackPhase = PHASE_RECOVER;
-            timer = abom.configInt(Config.ABOMINATION_DASH_RECOVER);
+            timer = abom.DASH_RECOVER;
             if(abom.phase == PHASE_2){
-                timer = abom.configInt(Config.ABOMINATION_DASH_RECOVER) * 2;
+                timer = abom.DASH_RECOVER * 2;
             }
             abom.setDeltaMovement(Vec3.ZERO);
             //abom.setAnimation(ANIM_DASH_RECOVER);
@@ -1864,7 +1938,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         @Override
         public void stop() {
             abom.setDeltaMovement(Vec3.ZERO);
-            abom.setCooldownNextAttack(abom.configInt(Config.ABOMINATION_DASH_COOLDOWN));
+            abom.setCooldownNextAttack(abom.DASH_COOLDOWN);
             abom.rollNextAttack(ATK_DASH);
             //if (abom.isAttackPhase()) abom.setAnimation(ANIM_IDLE);
         }

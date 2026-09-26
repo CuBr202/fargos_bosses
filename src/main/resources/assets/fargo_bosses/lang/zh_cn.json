@@ -1,0 +1,14 @@
+{
+  "entity.fargo_bosses.abomination": "憎恶",
+  "entity.fargo_bosses.mutant": "突变体",
+  "entity.fargo_bosses.free_fortuna_bomb": "幸运骰子炸弹",
+  "entity.fargo_bosses.rotating_soul_shield": "旋转灵魂护盾",
+  "entity.fargo_bosses.flexible_energy_beam": "定向能量光束",
+  "entity.fargo_bosses.mutant_laser_beam": "突变体的激光束",
+  "entity.fargo_bosses.mutant_leviathan_laser": "突变体的深渊激光",
+  "entity.fargo_bosses.mutant_magnetic_weapon": "突变体的磁力武器",
+  "entity.fargo_bosses.mutant_spinning_peppermint": "突变体的旋转薄荷糖",
+  "entity.fargo_bosses.mutant_extinction_spear": "突变体的灭绝之矛",
+  "entity.fargo_bosses.frost_spirit": "寒霜灵体",
+  "effect.fargo_bosses.mutant_inversion": "突变反转"
+}
