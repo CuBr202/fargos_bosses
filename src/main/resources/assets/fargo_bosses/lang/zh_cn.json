@@ -1,4 +1,6 @@
 {
+  "item.fargo_bosses.abomination_spawn_egg": "憎恶刷怪蛋",
+  "item.fargo_bosses.mutant_spawn_egg": "突变体刷怪蛋",
   "entity.fargo_bosses.abomination": "憎恶",
   "entity.fargo_bosses.mutant": "突变体",
   "entity.fargo_bosses.free_fortuna_bomb": "幸运骰子炸弹",

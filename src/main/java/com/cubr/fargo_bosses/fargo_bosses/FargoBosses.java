@@ -4,6 +4,7 @@ import com.cubr.fargo_bosses.fargo_bosses.command.FargoBossesCommand;
 import com.cubr.fargo_bosses.fargo_bosses.entity.MutantEntity;
 import com.cubr.fargo_bosses.fargo_bosses.registry.ModEffects;
 import com.cubr.fargo_bosses.fargo_bosses.registry.ModEntities;
+import com.cubr.fargo_bosses.fargo_bosses.registry.ModItems;
 import com.cubr.fargo_bosses.fargo_bosses.registry.ModSounds;
 import com.cubr.fargo_bosses.fargo_bosses.entity.AbominationEntity;
 import com.cubr.fargo_bosses.fargo_bosses.entity.FlexibleEnergyBeamEntity;
@@ -41,6 +42,7 @@ public class FargoBosses {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
 
         ModEntities.REGISTER.register(modEventBus);
+        ModItems.REGISTER.register(modEventBus);
         ModEffects.REGISTER.register(modEventBus);
         ModSounds.REGISTER.register(modEventBus);
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.SPEC);

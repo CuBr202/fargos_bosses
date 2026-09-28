@@ -1,4 +1,6 @@
 {
+  "item.fargo_bosses.abomination_spawn_egg": "Abomination Spawn Egg",
+  "item.fargo_bosses.mutant_spawn_egg": "Mutant Spawn Egg",
   "entity.fargo_bosses.abomination": "Abomination",
   "entity.fargo_bosses.mutant": "Mutant",
   "entity.fargo_bosses.free_fortuna_bomb": "Fortuna Dice Bomb",
