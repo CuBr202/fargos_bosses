@@ -544,6 +544,10 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         if (attackCooldown > 0) attackCooldown--;
         if (bombSafetyTicks > 0) bombSafetyTicks--;
         updatePoweredState();
+        if (restrictionBoundaryCreated) {
+            RotatingSoulShieldEntity.repairRestrictionRing(this, restrictionBoundaryShieldCount(),
+                    restrictionBoundaryRadius(), RESTRICTION_BOUNDARY_ORBIT_SPEED, getBorderDamage());
+        }
         if (waitingForFinalHit || tickCount < PHASE_TRANSITION_MIN_AGE) {
             super.customServerAiStep();
             return;
@@ -605,6 +609,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         }
 
         restrictionBoundaryCreated = true;
+        RotatingSoulShieldEntity.setRestrictionRingCenter(this, null);
         int shieldCount = restrictionBoundaryShieldCount();
         float radius = restrictionBoundaryRadius();
         for (int i = 0; i < shieldCount; i++) {
@@ -1356,6 +1361,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         }
 
         private void detachRestrictionRing() {
+            RotatingSoulShieldEntity.setRestrictionRingCenter(abom, arenaCenter);
             AABB searchArea = new AABB(arenaCenter.x, arenaCenter.y, arenaCenter.z, arenaCenter.x, arenaCenter.y, arenaCenter.z)
                     .inflate(abom.restrictionBoundaryRadius() + 8.0D);
             for (RotatingSoulShieldEntity shield : abom.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
@@ -1368,6 +1374,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         private void restoreRestrictionRing() {
             if (!ringDetached) return;
 
+            RotatingSoulShieldEntity.setRestrictionRingCenter(abom, null);
             AABB searchArea = new AABB(arenaCenter.x, arenaCenter.y, arenaCenter.z, arenaCenter.x, arenaCenter.y, arenaCenter.z)
                     .inflate(abom.restrictionBoundaryRadius() + 8.0D);
             for (RotatingSoulShieldEntity shield : abom.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
@@ -1734,6 +1741,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         }
 
         private void detachRestrictionRing() {
+            RotatingSoulShieldEntity.setRestrictionRingCenter(abom, new Vec3(ringCenterX, ringCenterY, ringCenterZ));
             AABB searchArea = new AABB(ringCenterX, ringCenterY, ringCenterZ, ringCenterX, ringCenterY, ringCenterZ)
                     .inflate(abom.restrictionBoundaryRadius() + 8.0D);
             for (RotatingSoulShieldEntity shield : abom.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
@@ -1748,6 +1756,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
                 return;
             }
 
+            RotatingSoulShieldEntity.setRestrictionRingCenter(abom, null);
             AABB searchArea = new AABB(ringCenterX, ringCenterY, ringCenterZ, ringCenterX, ringCenterY, ringCenterZ)
                     .inflate(abom.restrictionBoundaryRadius() + 8.0D);
             for (RotatingSoulShieldEntity shield : abom.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,

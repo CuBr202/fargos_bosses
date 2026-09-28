@@ -5,8 +5,10 @@ import com.cubr.fargo_bosses.fargo_bosses.registry.ModEntities;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
@@ -19,9 +21,19 @@ import net.miauczel.legendary_monsters.entity.AnimatedMonster.AnimatedEntity.Sou
 import net.miauczel.legendary_monsters.util.EntityUtil;
 import net.miauczel.legendary_monsters.util.MathUtils;
 
+import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 public class RotatingSoulShieldEntity extends SoulShieldEntity {
     private static final float DEFAULT_RADIUS = 4.0F;
     private static final float DEFAULT_ORBIT_SPEED = 0.12F;
+    private static final int RESTRICTION_RING_CHECK_INTERVAL = 200;
+    private static final double RESTRICTION_RING_SPACING_TOLERANCE = 0.5D;
+    private static final double RESTRICTION_RING_HEIGHT_TOLERANCE = 2.0D;
+    private static final String RESTRICTION_RING_CENTER_TAG = "FargoRestrictionRingCenter";
+    private static final String RESTRICTION_RING_GENERATION_TAG = "FargoRestrictionRingGeneration";
 
     private float orbitAngle;
     private float orbitRadius = DEFAULT_RADIUS;
@@ -97,6 +109,129 @@ public class RotatingSoulShieldEntity extends SoulShieldEntity {
         manualLifetime = ticks;
     }
 
+    public static void setRestrictionRingCenter(LivingEntity caster, @Nullable Vec3 center) {
+        if (caster.level().isClientSide) return;
+
+        // Keep the anchor on the boss so repairs also work when shields are missing.
+        CompoundTag anchor = new CompoundTag();
+        anchor.putBoolean("Detached", center != null);
+        if (center != null) {
+            anchor.putDouble("X", center.x);
+            anchor.putDouble("Y", center.y);
+            anchor.putDouble("Z", center.z);
+        }
+        caster.getPersistentData().put(RESTRICTION_RING_CENTER_TAG, anchor);
+    }
+
+    public static void repairRestrictionRing(LivingEntity caster, int shieldCount, float radius,
+                                             float speed, float damage) {
+        if (!(caster.level() instanceof ServerLevel serverLevel) || !caster.isAlive()
+                || caster.tickCount <= 0 || caster.tickCount % RESTRICTION_RING_CHECK_INTERVAL != 0
+                || shieldCount <= 0 || radius <= 0.0F) {
+            return;
+        }
+
+        // Include displaced shields outside the usual arena search box, but never another boss's ring.
+        List<RotatingSoulShieldEntity> shields = new ArrayList<>();
+        for (Entity entity : serverLevel.getAllEntities()) {
+            if (entity instanceof RotatingSoulShieldEntity shield && !shield.isRemoved()
+                    && shield.manualLifetime < 0 && shield.getCaster() == caster) {
+                shields.add(shield);
+            }
+        }
+
+        if (!caster.getPersistentData().contains(RESTRICTION_RING_CENTER_TAG)) {
+            // Existing saves predate the boss-side anchor; recover it from a surviving shield.
+            RotatingSoulShieldEntity previous = shields.isEmpty() ? null : shields.get(0);
+            setRestrictionRingCenter(caster, previous != null && previous.orbitAroundPosition
+                    ? new Vec3(previous.orbitCenterX, previous.orbitCenterY, previous.orbitCenterZ) : null);
+        }
+        CompoundTag anchor = caster.getPersistentData().getCompound(RESTRICTION_RING_CENTER_TAG);
+        boolean detached = anchor.getBoolean("Detached");
+        Vec3 center = detached ? new Vec3(anchor.getDouble("X"), anchor.getDouble("Y"), anchor.getDouble("Z"))
+                : caster.position();
+
+        boolean correctOrbit = true;
+        List<Vec3> positions = new ArrayList<>();
+        for (RotatingSoulShieldEntity shield : shields) {
+            positions.add(shield.position());
+            if (shield.orbitAroundPosition != detached || Math.abs(shield.orbitRadius - radius) > 0.01F
+                    || (detached && new Vec3(shield.orbitCenterX, shield.orbitCenterY, shield.orbitCenterZ)
+                    .distanceToSqr(center) > 0.01D)) {
+                correctOrbit = false;
+            }
+        }
+        if (correctOrbit && isRingEvenlyDistributed(positions, center, shieldCount, radius)) {
+            return;
+        }
+
+        double startAngle = shields.isEmpty() ? 0.0D
+                : Math.atan2(shields.get(0).getZ() - center.z, shields.get(0).getX() - center.x);
+        if (!Double.isFinite(startAngle)) startAngle = 0.0D;
+        boolean red = shields.isEmpty() || shields.get(0).getRed();
+        long generation = caster.getPersistentData().getLong(RESTRICTION_RING_GENERATION_TAG) + 1;
+        List<RotatingSoulShieldEntity> replacements = new ArrayList<>();
+        for (int i = 0; i < shieldCount; i++) {
+            float angle = (float) (startAngle + i * Math.PI * 2.0D / shieldCount);
+            RotatingSoulShieldEntity shield = new RotatingSoulShieldEntity(serverLevel, caster, 0.0D,
+                    radius, angle, speed, damage, red);
+            shield.setManualLifetime(-1);
+            shield.getPersistentData().putLong(RESTRICTION_RING_GENERATION_TAG, generation);
+            if (detached) {
+                shield.setOrbitAroundPosition(center.x, center.y, center.z, radius, angle, speed, 0.0D);
+            }
+            shield.setPos(center.x + Math.cos(angle) * radius, center.y, center.z + Math.sin(angle) * radius);
+            shield.faceRadiusFrom(center.x, center.y, center.z);
+            if (!serverLevel.addFreshEntity(shield)) {
+                shield.discard();
+                replacements.forEach(Entity::discard);
+                return;
+            }
+            replacements.add(shield);
+        }
+        caster.getPersistentData().putLong(RESTRICTION_RING_GENERATION_TAG, generation);
+        shields.forEach(Entity::discard);
+    }
+
+    private boolean isObsoleteRestrictionShield(LivingEntity caster) {
+        return manualLifetime < 0 && caster.getPersistentData().contains(RESTRICTION_RING_CENTER_TAG)
+                && getPersistentData().getLong(RESTRICTION_RING_GENERATION_TAG)
+                < caster.getPersistentData().getLong(RESTRICTION_RING_GENERATION_TAG);
+    }
+
+    private static boolean isRingEvenlyDistributed(List<Vec3> positions, Vec3 center, int shieldCount, float radius) {
+        if (positions.size() != shieldCount || shieldCount <= 0) return false;
+
+        double[] angles = new double[shieldCount];
+        double minimumRadius = Double.POSITIVE_INFINITY;
+        double maximumRadius = 0.0D;
+        for (int i = 0; i < shieldCount; i++) {
+            Vec3 position = positions.get(i);
+            double dx = position.x - center.x;
+            double dz = position.z - center.z;
+            double distance = Math.sqrt(dx * dx + dz * dz);
+            if (!Double.isFinite(distance) || !Double.isFinite(position.y) || distance < 0.1D
+                    || Math.abs(position.y - center.y) > RESTRICTION_RING_HEIGHT_TOLERANCE) {
+                return false;
+            }
+            minimumRadius = Math.min(minimumRadius, distance);
+            maximumRadius = Math.max(maximumRadius, distance);
+            angles[i] = Math.atan2(dz, dx);
+        }
+        // Pursuit movement can shrink a healthy ring uniformly; check distortion, not exact radius.
+        if (maximumRadius - minimumRadius > Math.max(1.0D, radius * 0.1D)) return false;
+        if (minimumRadius < radius * 0.5D || maximumRadius > radius * 1.5D) return false;
+
+        Arrays.sort(angles);
+        double expectedGap = Math.PI * 2.0D / shieldCount;
+        for (int i = 0; i < shieldCount; i++) {
+            double nextAngle = i + 1 < shieldCount ? angles[i + 1] : angles[0] + Math.PI * 2.0D;
+            double gap = nextAngle - angles[i];
+            if (Math.abs(gap - expectedGap) > expectedGap * RESTRICTION_RING_SPACING_TOLERANCE) return false;
+        }
+        return true;
+    }
+
     public void faceRadiusFrom(double centerX, double centerY, double centerZ) {
         Vec3 radius = new Vec3(getX() - centerX, getY() - centerY, getZ() - centerZ);
         if (radius.lengthSqr() > 1.0E-4) {
@@ -145,7 +280,7 @@ public class RotatingSoulShieldEntity extends SoulShieldEntity {
         }
 
         LivingEntity caster = getCaster();
-        if (!level().isClientSide && caster != null && !caster.isAlive()) {
+        if (caster != null && (!caster.isAlive() || isObsoleteRestrictionShield(caster))) {
             discard();
             return;
         }

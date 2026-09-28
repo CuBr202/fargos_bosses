@@ -859,6 +859,11 @@ public class MutantEntity extends BossEntity implements PowerableMob {
     @Override
     public void customServerAiStep() {
         updatePoweredState();
+        if (restrictionBoundaryCreated) {
+            RotatingSoulShieldEntity.repairRestrictionRing(this, RESTRICTION_BOUNDARY_SHIELDS,
+                    RESTRICTION_BOUNDARY_RADIUS, (float) (Math.PI * 2.0D / RESTRICTION_BOUNDARY_ORBIT_TICKS),
+                    RESTRICTION_BOUNDARY_DAMAGE);
+        }
         if (waitingForFinalHit || tickCount < PHASE_TRANSITION_MIN_AGE) {
             super.customServerAiStep();
             return;
@@ -1044,6 +1049,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
 
         restrictionBoundaryCreated = true;
+        RotatingSoulShieldEntity.setRestrictionRingCenter(this, null);
         float orbitSpeed = (float) (Math.PI * 2.0D / RESTRICTION_BOUNDARY_ORBIT_TICKS);
         for (int i = 0; i < RESTRICTION_BOUNDARY_SHIELDS; i++) {
             float angle = i / (float) RESTRICTION_BOUNDARY_SHIELDS * (float) (Math.PI * 2.0D);
@@ -1887,6 +1893,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         private void detachRestrictionRing() {
             arenaCenter = new Vec3(arenaCenter.x,
                     mutant.clearGroundPlacement(arenaCenter.x, arenaCenter.y, arenaCenter.z), arenaCenter.z);
+            RotatingSoulShieldEntity.setRestrictionRingCenter(mutant, arenaCenter);
             AABB searchArea = new AABB(arenaCenter, arenaCenter).inflate(RESTRICTION_BOUNDARY_RADIUS + 8.0D);
             for (RotatingSoulShieldEntity shield : mutant.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
                     shield -> shield.getCaster() == mutant)) {
@@ -1900,6 +1907,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
                 return;
             }
 
+            RotatingSoulShieldEntity.setRestrictionRingCenter(mutant, null);
             AABB searchArea = new AABB(arenaCenter, arenaCenter).inflate(RESTRICTION_BOUNDARY_RADIUS + 8.0D);
             for (RotatingSoulShieldEntity shield : mutant.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
                     shield -> shield.getCaster() == mutant)) {
@@ -2105,6 +2113,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         private void detachRestrictionRing() {
             arenaCenter = new Vec3(arenaCenter.x,
                     mutant.clearGroundPlacement(arenaCenter.x, arenaCenter.y, arenaCenter.z), arenaCenter.z);
+            RotatingSoulShieldEntity.setRestrictionRingCenter(mutant, arenaCenter);
             AABB searchArea = new AABB(arenaCenter, arenaCenter).inflate(RESTRICTION_BOUNDARY_RADIUS + 8.0D);
             for (RotatingSoulShieldEntity shield : mutant.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
                     shield -> shield.getCaster() == mutant)) {
@@ -2118,6 +2127,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
                 return;
             }
 
+            RotatingSoulShieldEntity.setRestrictionRingCenter(mutant, null);
             AABB searchArea = new AABB(arenaCenter, arenaCenter).inflate(RESTRICTION_BOUNDARY_RADIUS + 8.0D);
             for (RotatingSoulShieldEntity shield : mutant.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
                     shield -> shield.getCaster() == mutant)) {
@@ -2316,6 +2326,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         private void detachRestrictionRing() {
             arenaCenter = new Vec3(arenaCenter.x,
                     mutant.clearGroundPlacement(arenaCenter.x, arenaCenter.y, arenaCenter.z), arenaCenter.z);
+            RotatingSoulShieldEntity.setRestrictionRingCenter(mutant, arenaCenter);
             AABB searchArea = new AABB(arenaCenter, arenaCenter).inflate(RESTRICTION_BOUNDARY_RADIUS + 8.0D);
             for (RotatingSoulShieldEntity shield : mutant.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
                     shield -> shield.getCaster() == mutant)) {
@@ -2328,6 +2339,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
             if (!ringDetached) {
                 return;
             }
+            RotatingSoulShieldEntity.setRestrictionRingCenter(mutant, null);
             AABB searchArea = new AABB(arenaCenter, arenaCenter).inflate(RESTRICTION_BOUNDARY_RADIUS + 8.0D);
             for (RotatingSoulShieldEntity shield : mutant.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
                     shield -> shield.getCaster() == mutant)) {
@@ -2575,6 +2587,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         private void detachRestrictionRing() {
             arenaCenter = new Vec3(arenaCenter.x,
                     mutant.clearGroundPlacement(arenaCenter.x, arenaCenter.y, arenaCenter.z), arenaCenter.z);
+            RotatingSoulShieldEntity.setRestrictionRingCenter(mutant, arenaCenter);
             AABB searchArea = new AABB(arenaCenter, arenaCenter).inflate(RESTRICTION_BOUNDARY_RADIUS + 8.0D);
             for (RotatingSoulShieldEntity shield : mutant.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
                     shield -> shield.getCaster() == mutant)) {
@@ -2587,6 +2600,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
             if (!ringDetached) {
                 return;
             }
+            RotatingSoulShieldEntity.setRestrictionRingCenter(mutant, null);
             AABB searchArea = new AABB(arenaCenter, arenaCenter).inflate(RESTRICTION_BOUNDARY_RADIUS + 8.0D);
             for (RotatingSoulShieldEntity shield : mutant.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
                     shield -> shield.getCaster() == mutant)) {
@@ -3288,6 +3302,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         private void detachRestrictionRing() {
             arenaCenter = new Vec3(arenaCenter.x,
                     mutant.clearGroundPlacement(arenaCenter.x, arenaCenter.y, arenaCenter.z), arenaCenter.z);
+            RotatingSoulShieldEntity.setRestrictionRingCenter(mutant, arenaCenter);
             AABB searchArea = new AABB(arenaCenter, arenaCenter).inflate(RESTRICTION_BOUNDARY_RADIUS + 8.0D);
             for (RotatingSoulShieldEntity shield : mutant.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
                     shield -> shield.getCaster() == mutant)) {
@@ -3300,6 +3315,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
             if (!ringDetached) {
                 return;
             }
+            RotatingSoulShieldEntity.setRestrictionRingCenter(mutant, null);
             AABB searchArea = new AABB(arenaCenter, arenaCenter).inflate(RESTRICTION_BOUNDARY_RADIUS + 8.0D);
             for (RotatingSoulShieldEntity shield : mutant.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
                     shield -> shield.getCaster() == mutant)) {
@@ -4100,6 +4116,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         private void detachRestrictionRing() {
             arenaCenter = new Vec3(arenaCenter.x,
                     mutant.clearGroundPlacement(arenaCenter.x, arenaCenter.y, arenaCenter.z), arenaCenter.z);
+            RotatingSoulShieldEntity.setRestrictionRingCenter(mutant, arenaCenter);
             AABB searchArea = new AABB(arenaCenter, arenaCenter).inflate(RESTRICTION_BOUNDARY_RADIUS + 8.0D);
             for (RotatingSoulShieldEntity shield : mutant.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
                     shield -> shield.getCaster() == mutant)) {
@@ -4112,6 +4129,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
             if (!ringDetached) {
                 return;
             }
+            RotatingSoulShieldEntity.setRestrictionRingCenter(mutant, null);
             AABB searchArea = new AABB(arenaCenter, arenaCenter).inflate(RESTRICTION_BOUNDARY_RADIUS + 8.0D);
             for (RotatingSoulShieldEntity shield : mutant.level().getEntitiesOfClass(RotatingSoulShieldEntity.class, searchArea,
                     shield -> shield.getCaster() == mutant)) {
