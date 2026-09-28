@@ -10,5 +10,8 @@
   "entity.fargo_bosses.mutant_spinning_peppermint": "突变体的旋转薄荷糖",
   "entity.fargo_bosses.mutant_extinction_spear": "突变体的灭绝之矛",
   "entity.fargo_bosses.frost_spirit": "寒霜灵体",
-  "effect.fargo_bosses.mutant_inversion": "突变反转"
+  "effect.fargo_bosses.mutant_inversion": "突变反转",
+  "commands.fargo_bosses.difficulty.set": "已将%s的全局难度设为%s，对现有和新生成的 Boss 生效。",
+  "commands.fargo_bosses.difficulty.cleared": "已清除%s的全局难度，Boss 将使用各自的难度设置。",
+  "commands.fargo_bosses.difficulty.unknown_boss": "未知的 Boss“%s”。请使用 abomination 或 mutant。"
 }

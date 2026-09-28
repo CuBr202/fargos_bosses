@@ -1,5 +1,6 @@
 package com.cubr.fargo_bosses.fargo_bosses;
 
+import com.cubr.fargo_bosses.fargo_bosses.command.FargoBossesCommand;
 import com.cubr.fargo_bosses.fargo_bosses.entity.MutantEntity;
 import com.cubr.fargo_bosses.fargo_bosses.registry.ModEffects;
 import com.cubr.fargo_bosses.fargo_bosses.registry.ModEntities;
@@ -14,6 +15,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.living.MobSpawnEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
@@ -52,6 +54,11 @@ public class FargoBosses {
 
     private void commonSetup(final FMLCommonSetupEvent event) {
 
+    }
+
+    @SubscribeEvent
+    public void registerCommands(RegisterCommandsEvent event) {
+        FargoBossesCommand.register(event.getDispatcher());
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)

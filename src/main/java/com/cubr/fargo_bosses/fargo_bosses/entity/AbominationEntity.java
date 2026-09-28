@@ -5,6 +5,7 @@ import com.cubr.fargo_bosses.fargo_bosses.FargoBosses;
 import com.cubr.fargo_bosses.fargo_bosses.client.sound.AbominationMusic;
 import com.cubr.fargo_bosses.fargo_bosses.registry.ModEntities;
 import com.cubr.fargo_bosses.fargo_bosses.registry.ModSounds;
+import com.cubr.fargo_bosses.fargo_bosses.world.BossDifficultyData;
 import com.mojang.logging.LogUtils;
 import lykrast.meetyourfight.entity.BossEntity;
 import lykrast.meetyourfight.entity.ProjectileLineEntity;
@@ -147,6 +148,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
     private float RESTRICTION_RADIUS = 25F;
 
     public int phase;
+    private int individualBossDifficulty;
     private int phaseTimer, attackCooldown, nextAttack;
     private boolean restrictionBoundaryCreated;
     private double bombSafetyX, bombSafetyZ;
@@ -174,13 +176,39 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
     }
 
     public void setBossDifficulty(int difficulty) {
-        entityData.set(BOSS_DIFFICULTY, Mth.clamp(difficulty, 0, 2));
+        individualBossDifficulty = Mth.clamp(difficulty, 0, 2);
+        entityData.set(BOSS_DIFFICULTY, BossDifficultyData.resolve(level(),
+                BossDifficultyData.Boss.ABOMINATION, individualBossDifficulty));
         applyDifficultySettings();
         applyDifficultyHealth(false);
     }
 
     public int getBossDifficulty() {
         return entityData.get(BOSS_DIFFICULTY);
+    }
+
+    public void refreshGlobalBossDifficulty() {
+        if (level().isClientSide || !isAlive()) return;
+        int difficulty = BossDifficultyData.resolve(level(), BossDifficultyData.Boss.ABOMINATION, individualBossDifficulty);
+        if (difficulty == getBossDifficulty()) return;
+
+        float previousHealth = getHealth();
+        float healthRatio = previousHealth / getMaxHealth();
+        entityData.set(BOSS_DIFFICULTY, difficulty);
+        applyDifficultySettings();
+        applyDifficultyHealth(false);
+        // The desperate phase and final-hit state must keep their remaining health.
+        float health = phase >= PHASE_2_TRANSITION ? previousHealth
+                : Math.max(previousHealth > 1.0F ? Math.nextUp(1.0F) : 1.0F, healthRatio * getMaxHealth());
+        if (health > getHealth()) heal(health - getHealth());
+        else setHealth(health);
+        updatePoweredState();
+    }
+
+    @Override
+    public void onAddedToWorld() {
+        super.onAddedToWorld();
+        refreshGlobalBossDifficulty();
     }
 
     @Override
@@ -403,7 +431,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         setInvulnerable(false);
         setPowered(false);
         entityData.set(PHASE_TWO_MUSIC, false);
-        setBossDifficulty(getBossDifficulty());
+        setBossDifficulty(individualBossDifficulty);
         heal(getMaxHealth());
         return result;
     }
@@ -761,6 +789,8 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         attackCooldown = compound.getInt("AttackCooldown");
         nextAttack = compound.getInt("NxtAt");
         entityData.set(BOSS_DIFFICULTY, Mth.clamp(compound.getInt("BossDifficulty"), 0, 2));
+        individualBossDifficulty = compound.contains("IndividualBossDifficulty")
+                ? Mth.clamp(compound.getInt("IndividualBossDifficulty"), 0, 2) : getBossDifficulty();
         applyDifficultySettings();
         applyDifficultyHealth(false);
         restrictionBoundaryCreated = compound.getBoolean("RestrictionBoundaryCreated");
@@ -786,6 +816,7 @@ public class AbominationEntity extends BossEntity implements PowerableMob {
         compound.putInt("AttackCooldown", attackCooldown);
         compound.putInt("NxtAt", nextAttack);
         compound.putInt("BossDifficulty", getBossDifficulty());
+        compound.putInt("IndividualBossDifficulty", individualBossDifficulty);
         compound.putBoolean("RestrictionBoundaryCreated", restrictionBoundaryCreated);
         compound.putDouble("BombSafetyX", bombSafetyX);
         compound.putDouble("BombSafetyZ", bombSafetyZ);

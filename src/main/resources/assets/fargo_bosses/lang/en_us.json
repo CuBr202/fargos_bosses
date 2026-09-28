@@ -10,5 +10,8 @@
   "entity.fargo_bosses.mutant_spinning_peppermint": "Mutant's Spinning Peppermint",
   "entity.fargo_bosses.mutant_extinction_spear": "Mutant's Extinction Spear",
   "entity.fargo_bosses.frost_spirit": "Frost Spirit",
-  "effect.fargo_bosses.mutant_inversion": "Mutant Inversion"
+  "effect.fargo_bosses.mutant_inversion": "Mutant Inversion",
+  "commands.fargo_bosses.difficulty.set": "Global difficulty for %s set to %s. Applies to existing and newly spawned bosses.",
+  "commands.fargo_bosses.difficulty.cleared": "Global difficulty for %s cleared. Bosses now use their individual difficulty settings.",
+  "commands.fargo_bosses.difficulty.unknown_boss": "Unknown boss '%s'. Use abomination or mutant."
 }

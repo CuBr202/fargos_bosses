@@ -6,6 +6,7 @@ import com.cubr.fargo_bosses.fargo_bosses.client.sound.MutantMusic;
 import com.cubr.fargo_bosses.fargo_bosses.registry.ModEffects;
 import com.cubr.fargo_bosses.fargo_bosses.registry.ModEntities;
 import com.cubr.fargo_bosses.fargo_bosses.registry.ModSounds;
+import com.cubr.fargo_bosses.fargo_bosses.world.BossDifficultyData;
 import com.github.L_Ender.cataclysm.entity.AnimationMonster.BossMonsters.The_Leviathan.Abyss_Mine_Entity;
 import com.github.L_Ender.cataclysm.entity.effect.Cm_Falling_Block_Entity;
 import com.github.L_Ender.cataclysm.entity.effect.Flame_Strike_Entity;
@@ -380,6 +381,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
     private Vec3 waterArenaCenter = Vec3.ZERO;
     private boolean waitingForFinalHit;
     private boolean phaseHealthProtectionEnabled;
+    private int individualBossDifficulty;
     private int finalHitLandingState;
     private double finalHitGroundY;
 
@@ -400,13 +402,46 @@ public class MutantEntity extends BossEntity implements PowerableMob {
     }
 
     public void setBossDifficulty(int difficulty) {
-        entityData.set(BOSS_DIFFICULTY, Mth.clamp(difficulty, 0, 2));
+        individualBossDifficulty = Mth.clamp(difficulty, 0, 2);
+        entityData.set(BOSS_DIFFICULTY, BossDifficultyData.resolve(level(),
+                BossDifficultyData.Boss.MUTANT, individualBossDifficulty));
         applyDifficultySettings();
         applyDifficultyHealth(false);
     }
 
     public int getBossDifficulty() {
         return entityData.get(BOSS_DIFFICULTY);
+    }
+
+    public void refreshGlobalBossDifficulty() {
+        if (level().isClientSide || !isAlive()) return;
+        int difficulty = BossDifficultyData.resolve(level(), BossDifficultyData.Boss.MUTANT, individualBossDifficulty);
+        if (difficulty == getBossDifficulty()) return;
+
+        float previousHealth = getHealth();
+        float healthRatio = previousHealth / getMaxHealth();
+        entityData.set(BOSS_DIFFICULTY, difficulty);
+        applyDifficultySettings();
+        applyDifficultyHealth(false);
+        float health = phase >= PHASE_3_TRANSITION ? previousHealth
+                : Math.max(previousHealth > 1.0F ? Math.nextUp(1.0F) : 1.0F, healthRatio * getMaxHealth());
+        // Changing max health is not an attack and must not trigger a phase transition.
+        boolean protectHealth = phaseHealthProtectionEnabled;
+        phaseHealthProtectionEnabled = false;
+        try {
+            if (health > getHealth()) heal(health - getHealth());
+            else setHealth(health);
+        }
+        finally {
+            phaseHealthProtectionEnabled = protectHealth;
+        }
+        updatePoweredState();
+    }
+
+    @Override
+    public void onAddedToWorld() {
+        super.onAddedToWorld();
+        refreshGlobalBossDifficulty();
     }
 
     @Override
@@ -785,8 +820,8 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         nextPhaseFourAttack = ATTACK_PHASE_FOUR_PHANTOM_ARROW;
         waitingForFinalHit = false;
         finalHitLandingState = 0;
-        applyDifficultySettings();
-        applyDifficultyHealth(true);
+        setBossDifficulty(individualBossDifficulty);
+        heal(getMaxHealth());
         setInvulnerable(false);
         setPowered(false);
         return result;
@@ -1162,6 +1197,8 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         }
         phase = compound.getInt("Phase");
         entityData.set(BOSS_DIFFICULTY, Mth.clamp(compound.getInt("BossDifficulty"), 0, 2));
+        individualBossDifficulty = compound.contains("IndividualBossDifficulty")
+                ? Mth.clamp(compound.getInt("IndividualBossDifficulty"), 0, 2) : getBossDifficulty();
         applyDifficultySettings();
         applyDifficultyHealth(false);
         phaseTimer = compound.getInt("PhaseTimer");
@@ -1196,6 +1233,7 @@ public class MutantEntity extends BossEntity implements PowerableMob {
         super.addAdditionalSaveData(compound);
         compound.putInt("Phase", phase);
         compound.putInt("BossDifficulty", getBossDifficulty());
+        compound.putInt("IndividualBossDifficulty", individualBossDifficulty);
         compound.putInt("PhaseTimer", phaseTimer);
         compound.putInt("PendingActivePhase", pendingActivePhase);
         compound.putInt("PhaseStartAlignmentState", phaseStartAlignmentState);
