@@ -119,3 +119,6 @@ run/
 
 # dependies source file
 dependency_source_code/
+
+# ai pictures
+output/
